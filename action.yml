@@ -108,8 +108,10 @@ runs:
         set -euo pipefail
         sudo apt-get update -qq
         sudo apt-get install -y --no-install-recommends \
-          bc bison flex libssl-dev libelf-dev zip unzip python3 cpio lz4 xz-utils \
-          device-tree-compiler ccache gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi \
+          build-essential bc bison flex libssl-dev libelf-dev zstd \
+          zip unzip python3 cpio lz4 xz-utils tar device-tree-compiler ccache \
+          binutils-aarch64-linux-gnu gcc-aarch64-linux-gnu \
+          binutils-arm-linux-gnueabi gcc-arm-linux-gnueabi \
           git curl ca-certificates
         echo "== disk after apt =="
         df -h /
