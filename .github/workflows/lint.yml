@@ -1,0 +1,34 @@
+name: lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: shellcheck
+        run: |
+          set -euo pipefail
+          shellcheck --version | head -n 2
+          shellcheck -x -P scripts scripts/*.sh
+
+      - name: yamllint (pinned)
+        run: |
+          set -euo pipefail
+          pipx install yamllint==1.38.0
+          yamllint -s -c .yamllint.yml .
+
+      - name: actionlint (pinned + sha256 verified)
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/actionlint.tgz \
+            https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz
+          echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  /tmp/actionlint.tgz" | sha256sum -c -
+          tar -xzf /tmp/actionlint.tgz -C /tmp actionlint
+          /tmp/actionlint -verbose .github/workflows/*.yml

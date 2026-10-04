@@ -1,0 +1,48 @@
+name: release
+
+# kernel-ci-kit's own release: tag v* -> GitHub Release with changelog notes.
+# example-build.yml may attach a built example kernel zip to the same release.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Extract changelog section
+        run: |
+          set -euo pipefail
+          TAG="$GITHUB_REF_NAME"
+          if [ -f CHANGELOG.md ]; then
+            awk -v tag="$TAG" '
+              /^## \[/ {
+                if (found) exit
+                t = $0
+                sub(/^## \[/, "", t)
+                sub(/\].*$/, "", t)
+                if (t == tag || "v" t == tag) { found = 1; next }
+              }
+              found { print }
+            ' CHANGELOG.md > /tmp/release-notes.md
+          fi
+          if [ ! -s /tmp/release-notes.md ]; then
+            echo "See CHANGELOG.md and the repository history for details." > /tmp/release-notes.md
+          fi
+          echo "== release notes =="
+          cat /tmp/release-notes.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          body_path: /tmp/release-notes.md
+          generate_release_notes: true

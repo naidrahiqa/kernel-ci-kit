@@ -1,0 +1,125 @@
+name: example-build
+
+# Example consumer workflow for kernel-ci-kit.
+#
+# In YOUR kernel repo you would normally do: uses: <owner>/kernel-ci-kit@<tag>
+# and check out only your kernel source. Here the kernel source is checked out
+# into kernel/ so this repository can demo the action end to end
+# (workflow_dispatch) and attach a built zip to the GitHub Release on tag v*.
+
+on:
+  workflow_dispatch:
+    inputs:
+      kernel_repo:
+        description: 'Kernel source repo (owner/name)'
+        required: true
+        default: 'naidrahiqa/android_kernel_xiaomi_mt6768-k419'
+      kernel_ref:
+        description: 'Kernel source branch/tag/SHA'
+        required: true
+        default: 'PawwwNunungggg24.0'
+      defconfig:
+        description: 'Kernel defconfig target'
+        required: true
+        default: 'selene_defconfig'
+      device_name:
+        description: 'Device codename (zip + AK3 device check)'
+        required: true
+        default: 'selene'
+      toolchain:
+        description: 'Toolchain preset (aosp-clang | proton-clang | greenforce-clang)'
+        required: true
+        default: 'aosp-clang'
+      extra_make_args:
+        description: 'Extra make args, verbatim'
+        required: true
+        default: 'LLVM=1 LLVM_IAS=1'
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: example-build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout kernel-ci-kit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Checkout kernel source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ inputs.kernel_repo || 'naidrahiqa/android_kernel_xiaomi_mt6768-k419' }}
+          ref: ${{ inputs.kernel_ref || 'PawwwNunungggg24.0' }}
+          path: kernel
+          fetch-depth: 0
+
+      - name: Notify start
+        run: ./scripts/notify-telegram.sh start "kernel checkout ${{ inputs.kernel_ref || 'PawwwNunungggg24.0' }}"
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          KCK_SOURCE_REPO: ${{ inputs.kernel_repo || 'naidrahiqa/android_kernel_xiaomi_mt6768-k419' }}
+          KCK_SOURCE_BRANCH: ${{ inputs.kernel_ref || 'PawwwNunungggg24.0' }}
+          KCK_SOURCE_SHA: ${{ github.sha }}
+          KCK_DEFCONFIG: ${{ inputs.defconfig || 'selene_defconfig' }}
+          KCK_TOOLCHAIN: ${{ inputs.toolchain || 'aosp-clang' }}
+
+      - name: Build with kernel-ci-kit
+        id: kck
+        uses: ./
+        with:
+          defconfig: ${{ inputs.defconfig || 'selene_defconfig' }}
+          device_name: ${{ inputs.device_name || 'selene' }}
+          toolchain: ${{ inputs.toolchain || 'aosp-clang' }}
+          extra_make_args: ${{ inputs.extra_make_args || 'LLVM=1 LLVM_IAS=1' }}
+          kernel_path: kernel
+
+      - name: Notify success
+        if: success()
+        run: ./scripts/notify-telegram.sh success "${{ steps.kck.outputs.zip_name }}"
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          KCK_SOURCE_REPO: ${{ inputs.kernel_repo || 'naidrahiqa/android_kernel_xiaomi_mt6768-k419' }}
+          KCK_SOURCE_BRANCH: ${{ inputs.kernel_ref || 'PawwwNunungggg24.0' }}
+          KCK_SOURCE_SHA: ${{ github.sha }}
+          KCK_DEFCONFIG: ${{ inputs.defconfig || 'selene_defconfig' }}
+          KCK_TOOLCHAIN: ${{ inputs.toolchain || 'aosp-clang' }}
+          KCK_KERNEL_VERSION: ${{ steps.kck.outputs.kernel_version }}
+          KCK_BUILD_SECONDS: ${{ steps.kck.outputs.build_seconds }}
+          KCK_HIT_RATE: ${{ steps.kck.outputs.ccache_hit_rate }}
+          KCK_ARTIFACT: ${{ steps.kck.outputs.zip_name }}
+
+      - name: Notify failure
+        if: failure()
+        run: |
+          set -euo pipefail
+          ERR="$(grep -m1 -E 'error:|undefined reference|\*\*\* .*Error [0-9]' kernel/build.log 2>/dev/null | cut -c1-200 || true)"
+          ./scripts/notify-telegram.sh failed "${ERR:-see workflow log for details}"
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          KCK_SOURCE_REPO: ${{ inputs.kernel_repo || 'naidrahiqa/android_kernel_xiaomi_mt6768-k419' }}
+          KCK_SOURCE_BRANCH: ${{ inputs.kernel_ref || 'PawwwNunungggg24.0' }}
+          KCK_SOURCE_SHA: ${{ github.sha }}
+          KCK_DEFCONFIG: ${{ inputs.defconfig || 'selene_defconfig' }}
+          KCK_TOOLCHAIN: ${{ inputs.toolchain || 'aosp-clang' }}
+
+      - name: Attach zip to GitHub Release (tag v*)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          files: |
+            ${{ steps.kck.outputs.zip_path }}
+            ${{ steps.kck.outputs.zip_path }}.sha256
+          generate_release_notes: true
+          body: |
+            **Kernel:** ${{ steps.kck.outputs.kernel_version }}
+            **Build:** ${{ steps.kck.outputs.build_seconds }}s · ccache ${{ steps.kck.outputs.ccache_hit_rate }}%
+            **Source:** ${{ inputs.kernel_repo || 'naidrahiqa/android_kernel_xiaomi_mt6768-k419' }} @ ${{ inputs.kernel_ref || 'PawwwNunungggg24.0' }}

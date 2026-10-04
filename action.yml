@@ -65,6 +65,9 @@ outputs:
   zip_path:
     description: 'Path of the flashable AnyKernel3 zip.'
     value: ${{ steps.package.outputs.zip_path }}
+  zip_name:
+    description: 'File name of the zip (artifact/release asset name).'
+    value: ${{ steps.package.outputs.zip_name }}
   image_path:
     description: 'Primary kernel image (e.g. out/arch/arm64/boot/Image.gz-dtb).'
     value: ${{ steps.build.outputs.primary_image }}
