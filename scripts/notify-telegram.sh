@@ -7,6 +7,7 @@
 # Secrets (consumer repo → Settings → Secrets and variables → Actions):
 #   TELEGRAM_BOT_TOKEN   bot token (e.g. @naidradev_bot)
 #   TELEGRAM_CHAT_ID     chat/group id
+#   TELEGRAM_THREAD_ID   optional: forum topic id (message_thread_id)
 #
 # Auto-skips (exit 0) when TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is empty,
 # so a basic build keeps working with zero secrets.
@@ -23,6 +24,9 @@ set -euo pipefail
 SCRIPT_DIR="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 # shellcheck source=env.sh
 . "$SCRIPT_DIR/env.sh"
+
+TMP_NOTIFY="$(mktemp)"
+trap 'rm -f "$TMP_NOTIFY"' EXIT
 
 STATUS="${1:-}"
 DETAIL="${2:-}"
@@ -122,11 +126,16 @@ if [ "${KCK_DRY_RUN:-0}" = "1" ]; then
 fi
 
 log "sending telegram notify: $STATUS"
+EXTRA_ARGS=()
+if [ -n "${TELEGRAM_THREAD_ID:-}" ]; then
+  EXTRA_ARGS+=(--data-urlencode "message_thread_id=${TELEGRAM_THREAD_ID}")
+fi
 HTTP_CODE="$(curl -sS -o "$TMP_NOTIFY" -w '%{http_code}' \
   --connect-timeout 10 --max-time 30 \
   -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
   --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-  --data-urlencode "text=${BODY}" || printf '000')"
+  --data-urlencode "text=${BODY}" \
+  ${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"} || printf '000')"
 
 if [ "$HTTP_CODE" = "200" ]; then
   log "notify sent"

@@ -115,6 +115,7 @@ Add two secrets to **your** repo (`Settings → Secrets and variables → Action
 |---|---|
 | `TELEGRAM_BOT_TOKEN` | bot token, e.g. `123456:ABC-...` |
 | `TELEGRAM_CHAT_ID` | chat/group id, e.g. `-1001234567890` |
+| `TELEGRAM_THREAD_ID` | optional forum topic id, e.g. `47` |
 
 Then add the steps (all statuses share one uniform layout; the message always
 names the source repo/branch/commit + defconfig + toolchain):

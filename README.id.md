@@ -67,7 +67,8 @@ Tabel lengkap (outputs, env, preset):
 
 ## Notifikasi Telegram (opsional)
 
-Tambah 2 secret di **repo kamu**: `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID`.
+Tambah secret di **repo kamu**: `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID`
+(+ opsional `TELEGRAM_THREAD_ID` untuk forum topic).
 Tanpa secret, step notif auto-skip (build tetap jalan, nol secret dibutuhkan).
 Isi pesan seragam untuk start/success/failed dan selalu nyebut
 source repo/branch/commit + defconfig + toolchain.

@@ -88,7 +88,8 @@ Full details (outputs, env vars, presets): [docs/inputs-reference.md](docs/input
 ## Telegram notifications (optional)
 
 Secrets in **your** repo (`Settings → Secrets → Actions`):
-`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`. Without them the notify steps
+`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, optional `TELEGRAM_THREAD_ID`
+(forum topic → `message_thread_id`). Without them the notify steps
 auto-skip — the basic build needs **zero secrets**. Every message carries the
 source repo/branch/commit, defconfig and toolchain, so multi-source setups are
 distinguishable at a glance. See

@@ -99,6 +99,7 @@ simply skipped.
 |---|---|---|
 | `TELEGRAM_BOT_TOKEN` | no | notify steps log `skipped` and exit 0 |
 | `TELEGRAM_CHAT_ID` | no | same |
+| `TELEGRAM_THREAD_ID` | no | message posts without `message_thread_id` (general chat) |
 
 Basic build + release need **no secrets** beyond the default `GITHUB_TOKEN`
 (permission `contents: write` for the release job).

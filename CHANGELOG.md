@@ -6,6 +6,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/), versioning:
 
 ## [Unreleased]
 
+### Added
+- `TELEGRAM_THREAD_ID` secret: post notifications into a forum topic
+  (`message_thread_id`).
+
+### Fixed
+- `notify-telegram.sh`: initialize `TMP_NOTIFY` (mktemp + EXIT trap) —
+  the real-send path failed with `unbound variable` before.
+
 ## [0.1.0] - 2026-10-04
 
 ### Added
