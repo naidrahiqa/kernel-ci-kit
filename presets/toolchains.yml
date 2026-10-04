@@ -1,0 +1,44 @@
+# kernel-ci-kit — named toolchain presets
+#
+# Format is intentionally a strict, flat 2/4-space YAML shape so that
+# scripts/env.sh can parse it with awk (no yq/python dependency):
+#
+#   presets:
+#     <name>:
+#       <field>: <value>
+#
+# Fields per type:
+#   aosp-git : repo, dir, ref        sparse/shallow fetch of AOSP prebuilts
+#   tarball  : url, sha256           plain download + extract
+#   script   : installer, version    vendor installer script (runs python3)
+#
+# sha256 may be left empty (download is then unverified — CI logs a warning).
+# Fill it in when you want bit-for-bit reproducible toolchains.
+#
+# NOTE: every url/ref below that is not marked "verified" carries TODO(verify)
+# in its note — check it once and paste the sha256 to lock it down.
+
+presets:
+  aosp-clang:
+    type: aosp-git
+    clang: true
+    repo: https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86
+    dir: clang-r487747c
+    ref: android14-release
+    version: "17.0.2"
+    note: "AOSP Android 14 release clang, sparse fetch of a single dir. VERIFIED 2026-10-04: dir exists on ref android14-release (garbage-collected from main — do not switch ref back to main); real version string: 'Android (10087095, +pgo, +bolt, +lto, -mlgo, based on r487747c) clang version 17.0.2'."
+
+  proton-clang:
+    type: tarball
+    clang: true
+    url: https://github.com/kdrag0n/proton-clang/archive/refs/heads/master.tar.gz
+    sha256: ""
+    version: "master"
+    note: "kdrag0n/proton-clang source tarball (repo carries prebuilt binaries). VERIFIED 2026-10-04: URL returns 200. TODO(verify): pin a commit URL + sha256 for reproducibility (floating master right now)."
+
+  greenforce-clang:
+    type: script
+    clang: true
+    installer: https://raw.githubusercontent.com/greenforce-project/greenforce_clang/main/get_clang.sh
+    version: "floating-latest"
+    note: "Official Greenforce Clang installer (PGO+ThinLTO). VERIFIED 2026-10-04: get_clang.sh exists (the old get_clang.py URL is dead — 404). Installs to ./greenforce-clang in its cwd, so the kit runs it in a temp dir. TODO(verify): upstream has no pinned-tag mode; installer always resolves 'latest' on cache miss."
