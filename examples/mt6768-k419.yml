@@ -1,0 +1,98 @@
+# Complete consumer example — MediaTek MT6768 (Helio G88), Linux 4.19
+# Device: Xiaomi selene (Redmi 10 / 10 2022 / 10 Prime) and derivatives.
+#
+# Drop this file into your KERNEL repository as
+# .github/workflows/build.yml (adjust `uses:` refs and inputs).
+#
+# Verified facts baked in here (2026-10-04):
+#   - defconfig exists: arch/arm64/configs/selene_defconfig
+#   - known-good make flags: LLVM=1 LLVM_IAS=1 + clang/llvm tool variables
+#   - AK3: flash boot only, never patch vbmeta (MediaTek boot chain)
+# TODO(verify): end-to-end hosted-runner build not executed yet — first
+# run is the acceptance test.
+
+name: build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  kernel:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout kernel source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Notify start
+        run: ./scripts/notify-telegram.sh start "${{ github.ref_name }}"
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          KCK_SOURCE_REPO: ${{ github.repository }}
+          KCK_SOURCE_BRANCH: ${{ github.ref_name }}
+          KCK_SOURCE_SHA: ${{ github.sha }}
+          KCK_DEFCONFIG: selene_defconfig
+          KCK_TOOLCHAIN: aosp-clang
+
+      - name: Build with kernel-ci-kit
+        id: kck
+        uses: naidrahiqa/kernel-ci-kit@v0.1.0 # TODO(verify): pin full SHA
+        with:
+          defconfig: selene_defconfig
+          device_name: selene
+          toolchain: aosp-clang          # clang-r487747c, AOSP android14-release
+          extra_make_args: LLVM=1 LLVM_IAS=1
+          # kernel_path: .                # default
+          # arch: arm64                   # default
+          # use_ccache: 'true'            # default
+          # ccache_size: 2G               # default
+          # anykernel_repo: https://github.com/<you>/AnyKernel3  # optional fork
+
+      - name: Notify result
+        if: success() || failure()
+        run: |
+          set -euo pipefail
+          if [ "$JOB_RESULT" = "success" ]; then
+            ./scripts/notify-telegram.sh success "${{ steps.kck.outputs.zip_name }}"
+          else
+            ERR="$(grep -m1 -E 'error:|undefined reference|\*\*\* .*Error [0-9]' build.log 2>/dev/null | cut -c1-200 || true)"
+            ./scripts/notify-telegram.sh failed "${ERR:-see workflow log}"
+          fi
+        env:
+          JOB_RESULT: ${{ job.status }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          KCK_SOURCE_REPO: ${{ github.repository }}
+          KCK_SOURCE_BRANCH: ${{ github.ref_name }}
+          KCK_SOURCE_SHA: ${{ github.sha }}
+          KCK_DEFCONFIG: selene_defconfig
+          KCK_TOOLCHAIN: aosp-clang
+          KCK_KERNEL_VERSION: ${{ steps.kck.outputs.kernel_version }}
+          KCK_BUILD_SECONDS: ${{ steps.kck.outputs.build_seconds }}
+          KCK_HIT_RATE: ${{ steps.kck.outputs.ccache_hit_rate }}
+          KCK_ARTIFACT: ${{ steps.kck.outputs.zip_name }}
+
+      - name: Release on tag v*
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          files: |
+            ${{ steps.kck.outputs.zip_path }}
+            ${{ steps.kck.outputs.zip_path }}.sha256
+          generate_release_notes: true
+          body: |
+            **Kernel:** ${{ steps.kck.outputs.kernel_version }}
+            **Build:** ${{ steps.kck.outputs.build_seconds }}s · ccache ${{ steps.kck.outputs.ccache_hit_rate }}%
+            **Defconfig:** selene_defconfig · **Toolchain:** aosp-clang (clang-r487747c)
