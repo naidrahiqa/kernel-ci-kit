@@ -241,6 +241,8 @@ resolve_toolchain() {
       src="$TOOLCHAIN|$(preset_field "$TOOLCHAIN" installer)|${TOOLCHAIN_VERSION:-$(preset_field "$TOOLCHAIN" version)}"
       ;;
   esac
+  # Key format: toolchain-<preset>-<hash> — the preset-name prefix is what
+  # actions/cache restore-keys (`<toolchain>-`) matches against.
   TOOLCHAIN_ID="$TOOLCHAIN"
-  TOOLCHAIN_CACHE_KEY="toolchain-$(sha256_of "$src" | cut -c1-20)"
+  TOOLCHAIN_CACHE_KEY="toolchain-${TOOLCHAIN}-$(sha256_of "$src" | cut -c1-20)"
 }

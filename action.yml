@@ -1,0 +1,203 @@
+name: 'kernel-ci-kit'
+description: >-
+  Build an Android kernel with cached Clang toolchain + ccache and package a
+  flashable AnyKernel3 zip. Reusable composite action — pass your defconfig
+  and device name, get a zip artifact.
+author: 'kernel-ci-kit contributors'
+branding:
+  icon: 'package'
+  color: 'orange'
+
+inputs:
+  defconfig:
+    description: 'Kernel defconfig target, e.g. selene_defconfig.'
+    required: true
+  arch:
+    description: 'Kernel ARCH.'
+    default: 'arm64'
+  toolchain:
+    description: 'Preset name from presets/toolchains.yml (aosp-clang | proton-clang | greenforce-clang).'
+    default: 'aosp-clang'
+  toolchain_url:
+    description: 'Tarball URL override — wins over the preset (type becomes tarball).'
+    default: ''
+  toolchain_sha256:
+    description: 'sha256 of toolchain_url (or preset tarball). Verified when non-empty.'
+    default: ''
+  cross_compile:
+    description: 'CROSS_COMPILE prefix.'
+    default: 'aarch64-linux-gnu-'
+  cross_compile_arm32:
+    description: 'CROSS_COMPILE_ARM32 prefix (compat/32-bit). Empty to disable.'
+    default: 'arm-linux-gnueabi-'
+  extra_make_args:
+    description: 'Extra make arguments passed verbatim, e.g. "LLVM=1 LLVM_IAS=1".'
+    default: ''
+  kernel_path:
+    description: 'Kernel source root relative to the workspace.'
+    default: '.'
+  jobs:
+    description: 'Parallel make jobs. Empty = nproc.'
+    default: ''
+  use_ccache:
+    description: 'Enable ccache (true/false).'
+    default: 'true'
+  ccache_size:
+    description: 'CCACHE_MAXSIZE, e.g. 2G.'
+    default: '2G'
+  anykernel_repo:
+    description: 'Your AnyKernel3 fork URL. Empty = upstream osm0sis/AnyKernel3 with generated anykernel.sh.'
+    default: ''
+  anykernel_branch:
+    description: 'AnyKernel3 branch to clone.'
+    default: 'master'
+  device_name:
+    description: 'Device codename (zip name + AK3 device.name1), e.g. selene.'
+    required: true
+  zip_name_template:
+    description: 'Zip name template. Placeholders: {device} {version} {date}.'
+    default: '{device}-{version}-{date}'
+  upload_artifact:
+    description: 'Upload the zip as a workflow artifact (true/false).'
+    default: 'true'
+
+outputs:
+  zip_path:
+    description: 'Path of the flashable AnyKernel3 zip.'
+    value: ${{ steps.package.outputs.zip_path }}
+  image_path:
+    description: 'Primary kernel image (e.g. out/arch/arm64/boot/Image.gz-dtb).'
+    value: ${{ steps.build.outputs.primary_image }}
+  kernel_version:
+    description: 'make kernelrelease output.'
+    value: ${{ steps.build.outputs.kernel_version }}
+  build_seconds:
+    description: 'Wall-clock seconds spent in the compile step.'
+    value: ${{ steps.build.outputs.build_seconds }}
+  ccache_hit_rate:
+    description: 'ccache hit rate % for this build (n/a when ccache is off).'
+    value: ${{ steps.build.outputs.ccache_hit_rate }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Free runner disk space
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "== disk before =="
+        df -h /
+        # Hosted runners ship SDKs a kernel build never needs (~15 GB).
+        # Paths are guarded: missing dirs are a no-op.
+        for d in /usr/local/lib/android /usr/local/share/boost /opt/hostedtoolcache/CodeQL \
+                 /usr/share/dotnet /opt/ghc /usr/local/.ghcup /opt/az /opt/microsoft; do
+          if [ -d "$d" ]; then
+            echo "removing $d"
+            sudo rm -rf "$d" || echo "could not remove $d (continuing)"
+          fi
+        done
+        echo "== disk after =="
+        df -h /
+
+    - name: Install build dependencies
+      shell: bash
+      run: |
+        set -euo pipefail
+        sudo apt-get update -qq
+        sudo apt-get install -y --no-install-recommends \
+          bc bison flex libssl-dev libelf-dev zip unzip python3 cpio lz4 xz-utils \
+          device-tree-compiler ccache gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi \
+          git curl ca-certificates
+        echo "== disk after apt =="
+        df -h /
+
+    - name: Resolve toolchain cache key
+      id: tckey
+      shell: bash
+      env:
+        IN_TOOLCHAIN: ${{ inputs.toolchain }}
+        IN_TOOLCHAIN_URL: ${{ inputs.toolchain_url }}
+        IN_TOOLCHAIN_SHA256: ${{ inputs.toolchain_sha256 }}
+      run: |
+        set -euo pipefail
+        key="$(TOOLCHAIN="$IN_TOOLCHAIN" TOOLCHAIN_URL="$IN_TOOLCHAIN_URL" \
+          TOOLCHAIN_SHA256="$IN_TOOLCHAIN_SHA256" \
+          "${{ github.action_path }}/scripts/setup-toolchain.sh" --print-cache-key)"
+        echo "toolchain cache key: $key"
+        echo "key=$key" >> "$GITHUB_OUTPUT"
+
+    - name: Cache toolchain
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/toolchain
+        key: ${{ steps.tckey.outputs.key }}
+        restore-keys: |
+          toolchain-${{ inputs.toolchain }}-
+
+    - name: Cache ccache
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.cache/kernel-ci-kit-ccache
+        key: ccache-${{ steps.tckey.outputs.key }}-${{ inputs.defconfig }}-${{ github.run_id }}
+        restore-keys: |
+          ccache-${{ steps.tckey.outputs.key }}-
+          ccache-toolchain-${{ inputs.toolchain }}-
+
+    - name: Setup toolchain
+      id: toolchain
+      shell: bash
+      run: '"${{ github.action_path }}/scripts/setup-toolchain.sh"'
+      env:
+        TOOLCHAIN: ${{ inputs.toolchain }}
+        TOOLCHAIN_URL: ${{ inputs.toolchain_url }}
+        TOOLCHAIN_SHA256: ${{ inputs.toolchain_sha256 }}
+
+    - name: Build kernel
+      id: build
+      shell: bash
+      run: '"${{ github.action_path }}/scripts/build-kernel.sh"'
+      env:
+        DEFCONFIG: ${{ inputs.defconfig }}
+        ARCH: ${{ inputs.arch }}
+        KERNEL_PATH: ${{ inputs.kernel_path }}
+        JOBS: ${{ inputs.jobs }}
+        EXTRA_MAKE_ARGS: ${{ inputs.extra_make_args }}
+        CROSS_COMPILE: ${{ inputs.cross_compile }}
+        CROSS_COMPILE_ARM32: ${{ inputs.cross_compile_arm32 }}
+        USE_CCACHE: ${{ inputs.use_ccache }}
+        CCACHE_SIZE: ${{ inputs.ccache_size }}
+        TOOLCHAIN: ${{ inputs.toolchain }}
+        TOOLCHAIN_URL: ${{ inputs.toolchain_url }}
+        TOOLCHAIN_SHA256: ${{ inputs.toolchain_sha256 }}
+
+    - name: Upload build log (failure only)
+      if: failure()
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: build-log-${{ github.run_id }}
+        path: ${{ inputs.kernel_path }}/build.log
+        if-no-files-found: ignore
+        retention-days: 14
+
+    - name: Package AnyKernel3
+      id: package
+      shell: bash
+      run: '"${{ github.action_path }}/scripts/package-anykernel.sh"'
+      env:
+        DEVICE_NAME: ${{ inputs.device_name }}
+        KERNEL_PATH: ${{ inputs.kernel_path }}
+        KERNEL_VERSION: ${{ steps.build.outputs.kernel_version }}
+        ANYKERNEL_REPO: ${{ inputs.anykernel_repo }}
+        ANYKERNEL_BRANCH: ${{ inputs.anykernel_branch }}
+        ZIP_NAME_TEMPLATE: ${{ inputs.zip_name_template }}
+
+    - name: Upload flashable zip
+      if: ${{ inputs.upload_artifact == 'true' }}
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: ${{ steps.package.outputs.zip_name }}
+        path: |
+          ${{ steps.package.outputs.zip_path }}
+          ${{ steps.package.outputs.zip_path }}.sha256
+        if-no-files-found: error
+        retention-days: 30

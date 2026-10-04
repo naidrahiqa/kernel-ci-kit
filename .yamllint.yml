@@ -1,0 +1,9 @@
+# yamllint config for kernel-ci-kit
+# Reason for this file: workflows and action.yml legitimately exceed 80
+# columns (SHA-pinned `uses:` lines, long descriptions). Everything else
+# stays at yamllint's "relaxed" preset; lint runs with -s so any remaining
+# warning-level finding still fails CI.
+extends: relaxed
+
+rules:
+  line-length: disable

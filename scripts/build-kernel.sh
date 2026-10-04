@@ -173,4 +173,9 @@ gh_output primary_image "$PRIMARY"
 gh_output ccache_hit_rate "$HIT_RATE"
 gh_output build_log "$KERNEL_PATH/$BUILD_LOG"
 
-log "done: primary=$PRIMARY version=$KERNEL_VERSION ${BUILD_SECONDS}s hit-rate=${HIT_RATE}%"
+if [ "$HIT_RATE" = "n/a" ]; then
+  HIT_LABEL="n/a"
+else
+  HIT_LABEL="${HIT_RATE}%"
+fi
+log "done: primary=$PRIMARY version=$KERNEL_VERSION ${BUILD_SECONDS}s hit-rate=$HIT_LABEL"
