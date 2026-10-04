@@ -46,7 +46,12 @@ CCACHE_DIR="${CCACHE_DIR:-$HOME/.cache/kernel-ci-kit-ccache}"
 ANYKERNEL_REPO="${ANYKERNEL_REPO:-}"     # empty = upstream osm0sis/AnyKernel3
 ANYKERNEL_BRANCH="${ANYKERNEL_BRANCH:-master}"
 DEVICE_NAME="${DEVICE_NAME:-}"
-ZIP_NAME_TEMPLATE="${ZIP_NAME_TEMPLATE:-{device}-{version}-{date}}"
+# NOTE: no braces inside ${VAR:-default} — bash would close the expansion at
+# the first '}' and silently mangle the template (zip names came out broken).
+ZIP_NAME_TEMPLATE="${ZIP_NAME_TEMPLATE:-}"
+if [ -z "$ZIP_NAME_TEMPLATE" ]; then
+  ZIP_NAME_TEMPLATE='{device}-{version}-{date}'
+fi
 
 # ---- logging helpers -------------------------------------------------------
 log()  { printf '[kck] %s\n' "$*"; }
