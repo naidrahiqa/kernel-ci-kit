@@ -27,11 +27,16 @@ SCRIPT_DIR="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 STATUS="${1:-}"
 DETAIL="${2:-}"
 case "$STATUS" in
-  start|success|failed) ;;
   -h|--help)
     sed -n '2,20p' "$0"
     exit 0
     ;;
+  start) ;;
+  success) ;;
+  failed) ;;
+  # Accept raw GitHub job.status values so callers can pass
+  # ${{ job.status }} directly: failure / cancelled.
+  failure|error|cancelled) STATUS="failed" ;;
   *) die "usage: notify-telegram.sh start|success|failed [detail]" ;;
 esac
 

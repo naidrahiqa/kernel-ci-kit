@@ -60,12 +60,14 @@ if [ "$TOOLCHAIN_CLANG" = "true" ]; then
   fi
   MAKE_OPTS+=(
     "CC=$CC_CMD"
+    "HOSTCC=gcc"
     "LD=ld.lld"
     "AR=llvm-ar"
     "NM=llvm-nm"
     "OBJCOPY=llvm-objcopy"
     "OBJDUMP=llvm-objdump"
     "STRIP=llvm-strip"
+    "READELF=llvm-readelf"
   )
 elif [ "$HAVE_CCACHE" = "true" ]; then
   MAKE_OPTS+=("CC=ccache ${CROSS_COMPILE}gcc")
