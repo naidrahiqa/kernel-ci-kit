@@ -1,0 +1,21 @@
+# Build artifacts
+out/
+build.log
+*.zip
+dist/
+
+# Toolchain downloads / extractions
+.toolchain-cache/
+toolchain/
+
+# ccache
+.ccache/
+
+# Python (phase 2)
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Editors / OS
+*.swp
+.DS_Store
