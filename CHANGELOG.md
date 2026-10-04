@@ -6,6 +6,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/), versioning:
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-04
+
 ### Added
 - Composite action `action.yml`: free-disk, apt deps, SHA-pinned
   `actions/cache` for toolchain + ccache, setup/build/package steps,
@@ -32,8 +34,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/), versioning:
   contributing; MT6768 k4.19 example workflow.
 - Phase 2 stub: `tools/defconfig-doctor/README.md`.
 
+### Verified
+- Hosted-runner acceptance (2026-10-04): cold build 781s, cached run
+  161s with ccache hit rate 100% and toolchain cache restore (no
+  2.3 GB re-download); real MT6768 k4.19 `selene_defconfig` produced
+  `Image.gz-dtb` + AnyKernel3 zip (41 MB) attached to release `v0.1.0`.
+
 ### Notes
 - Third-party actions pinned by full commit SHA; toolchains pinned by
   input/preset except greenforce/proton (floating upstream — TODO).
-- Local verification used a mock kernel tree; the first hosted-runner build
-  of a real MT6768 k4.19 tree is the acceptance test (TODO).
+- Telegram notifications verified in auto-skip mode; a real send needs
+  `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` secrets (TODO).
