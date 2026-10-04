@@ -67,11 +67,13 @@ Tabel lengkap (outputs, env, preset):
 
 ## Notifikasi Telegram (opsional)
 
-Tambah secret di **repo kamu**: `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID`
-(+ opsional `TELEGRAM_THREAD_ID` untuk forum topic).
+Tambah secret di **repo kamu**: `TELEGRAM_BOT_TOKEN` + tujuan
+(`TELEGRAM_CHAT_ID`/`TELEGRAM_GROUP_ID`, `TELEGRAM_THREAD_ID`/`TELEGRAM_TOPIC_CI`).
+Opsional: `TELEGRAM_CHANNEL_ID` (zip rilis ke channel), `TELEGRAM_TOPIC_LOG`
+(tail log saat gagal), `TELEGRAM_ERROR_CHANNEL_ID` (detail error ke channel).
 Tanpa secret, step notif auto-skip (build tetap jalan, nol secret dibutuhkan).
-Isi pesan seragam untuk start/success/failed dan selalu nyebut
-source repo/branch/commit + defconfig + toolchain.
+Pesan HTML seragam (branch, commit, tag, link build) — format sama dengan
+notifier CI PawwwNunungggg klasik.
 
 ## Pemakaian lokal
 

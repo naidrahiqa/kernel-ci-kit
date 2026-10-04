@@ -7,12 +7,24 @@ Format: [Keep a Changelog](https://keepachangelog.com/), versioning:
 ## [Unreleased]
 
 ### Added
-- `TELEGRAM_THREAD_ID` secret: post notifications into a forum topic
-  (`message_thread_id`).
+- Multi-destination Telegram routing (parity with the classic
+  PawwwNunungggg notifier): primary forum topic
+  (`TELEGRAM_TOPIC_CI`/`TELEGRAM_THREAD_ID`), release channel zip
+  document with features/changelog/download button
+  (`TELEGRAM_CHANNEL_ID`), log-topic tail and error channel on failure
+  (`TELEGRAM_TOPIC_LOG`, `TELEGRAM_ERROR_CHANNEL_ID`).
+- HTML message layout with branch → Android target mapping, KSU version
+  and enabled-feature blocks read from the built `.config`.
+
+### Changed
+- `notify-telegram.sh` CLI: `start` / `success [zip]` / `failed [log]`;
+  `VERSION`/`TAG` derived from the kernel tree (`VERSION` file, branch,
+  short sha).
 
 ### Fixed
-- `notify-telegram.sh`: initialize `TMP_NOTIFY` (mktemp + EXIT trap) —
-  the real-send path failed with `unbound variable` before.
+- Notifications landed in the general forum topic: `TELEGRAM_THREAD_ID`
+  was never passed by the example workflow.
+- Real-send path crashed with `TMP_NOTIFY: unbound variable`.
 
 ## [0.1.0] - 2026-10-04
 

@@ -88,11 +88,14 @@ Full details (outputs, env vars, presets): [docs/inputs-reference.md](docs/input
 ## Telegram notifications (optional)
 
 Secrets in **your** repo (`Settings → Secrets → Actions`):
-`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, optional `TELEGRAM_THREAD_ID`
-(forum topic → `message_thread_id`). Without them the notify steps
-auto-skip — the basic build needs **zero secrets**. Every message carries the
-source repo/branch/commit, defconfig and toolchain, so multi-source setups are
-distinguishable at a glance. See
+`TELEGRAM_BOT_TOKEN` + a destination (`TELEGRAM_CHAT_ID` / `TELEGRAM_GROUP_ID`,
+`TELEGRAM_THREAD_ID` / `TELEGRAM_TOPIC_CI`). Without them the notify steps
+auto-skip — the basic build needs **zero secrets**. Optional destinations:
+`TELEGRAM_CHANNEL_ID` (release channel: zip document on success),
+`TELEGRAM_TOPIC_LOG` (log tail on failure), `TELEGRAM_ERROR_CHANNEL_ID`
+(error detail on failure). Messages are HTML and always carry branch,
+commit, tag and build link, matching the classic PawwwNunungggg CI layout.
+See
 [docs/getting-started.md](docs/getting-started.md#telegram-notifications-optional).
 
 ## Local usage
@@ -107,8 +110,8 @@ DEFCONFIG=selene_defconfig EXTRA_MAKE_ARGS="LLVM=1 LLVM_IAS=1" ./scripts/build-k
 # package
 DEVICE_NAME=selene ./scripts/package-anykernel.sh
 
-# notify (dry-run first)
-KCK_DRY_RUN=1 TELEGRAM_BOT_TOKEN=x TELEGRAM_CHAT_ID=y \
+# notify (dry-run first: prints every destination + payload)
+KCK_DRY_RUN=1 TELEGRAM_BOT_TOKEN=x TELEGRAM_CHAT_ID=y TELEGRAM_THREAD_ID=47 \
   ./scripts/notify-telegram.sh success "selene-4.19.325.zip"
 ```
 

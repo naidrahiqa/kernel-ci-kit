@@ -60,15 +60,17 @@ jobs:
           fetch-depth: 0
 
       - name: Notify start
-        run: ./scripts/notify-telegram.sh start "kernel checkout ${{ inputs.kernel_ref || 'PawwwNunungggg24.0' }}"
+        run: ./scripts/notify-telegram.sh start
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_GROUP_ID: ${{ secrets.TELEGRAM_GROUP_ID || '-1004414006944' }}
+          TELEGRAM_TOPIC_CI: "47"
+          TELEGRAM_TOPIC_LOG: "8"
+          TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID || '-1003752197403' }}
+          KCK_KERNEL_DIR: kernel
           KCK_SOURCE_REPO: ${{ inputs.kernel_repo || 'naidrahiqa/android_kernel_xiaomi_mt6768-k419' }}
           KCK_SOURCE_BRANCH: ${{ inputs.kernel_ref || 'PawwwNunungggg24.0' }}
           KCK_SOURCE_SHA: ${{ github.sha }}
-          KCK_DEFCONFIG: ${{ inputs.defconfig || 'selene_defconfig' }}
-          KCK_TOOLCHAIN: ${{ inputs.toolchain || 'aosp-clang' }}
 
       - name: Build with kernel-ci-kit
         id: kck
@@ -85,30 +87,30 @@ jobs:
         run: ./scripts/notify-telegram.sh success "${{ steps.kck.outputs.zip_name }}"
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_GROUP_ID: ${{ secrets.TELEGRAM_GROUP_ID || '-1004414006944' }}
+          TELEGRAM_TOPIC_CI: "47"
+          TELEGRAM_TOPIC_LOG: "8"
+          TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID || '-1003752197403' }}
+          KCK_KERNEL_DIR: kernel
           KCK_SOURCE_REPO: ${{ inputs.kernel_repo || 'naidrahiqa/android_kernel_xiaomi_mt6768-k419' }}
           KCK_SOURCE_BRANCH: ${{ inputs.kernel_ref || 'PawwwNunungggg24.0' }}
           KCK_SOURCE_SHA: ${{ github.sha }}
-          KCK_DEFCONFIG: ${{ inputs.defconfig || 'selene_defconfig' }}
           KCK_TOOLCHAIN: ${{ inputs.toolchain || 'aosp-clang' }}
-          KCK_KERNEL_VERSION: ${{ steps.kck.outputs.kernel_version }}
           KCK_BUILD_SECONDS: ${{ steps.kck.outputs.build_seconds }}
-          KCK_HIT_RATE: ${{ steps.kck.outputs.ccache_hit_rate }}
-          KCK_ARTIFACT: ${{ steps.kck.outputs.zip_name }}
 
       - name: Notify failure
         if: failure()
-        run: |
-          set -euo pipefail
-          ERR="$(grep -m1 -E 'error:|undefined reference|\*\*\* .*Error [0-9]' kernel/build.log 2>/dev/null | cut -c1-200 || true)"
-          ./scripts/notify-telegram.sh failed "${ERR:-see workflow log for details}"
+        run: ./scripts/notify-telegram.sh failed
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_GROUP_ID: ${{ secrets.TELEGRAM_GROUP_ID || '-1004414006944' }}
+          TELEGRAM_TOPIC_CI: "47"
+          TELEGRAM_TOPIC_LOG: "8"
+          TELEGRAM_ERROR_CHANNEL_ID: ${{ secrets.TELEGRAM_ERROR_CHANNEL_ID || '-1003945405514' }}
+          KCK_KERNEL_DIR: kernel
           KCK_SOURCE_REPO: ${{ inputs.kernel_repo || 'naidrahiqa/android_kernel_xiaomi_mt6768-k419' }}
           KCK_SOURCE_BRANCH: ${{ inputs.kernel_ref || 'PawwwNunungggg24.0' }}
           KCK_SOURCE_SHA: ${{ github.sha }}
-          KCK_DEFCONFIG: ${{ inputs.defconfig || 'selene_defconfig' }}
           KCK_TOOLCHAIN: ${{ inputs.toolchain || 'aosp-clang' }}
 
       - name: Attach zip to GitHub Release (tag v*)

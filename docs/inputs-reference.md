@@ -98,8 +98,11 @@ simply skipped.
 | secret | required | behavior when missing |
 |---|---|---|
 | `TELEGRAM_BOT_TOKEN` | no | notify steps log `skipped` and exit 0 |
-| `TELEGRAM_CHAT_ID` | no | same |
-| `TELEGRAM_THREAD_ID` | no | message posts without `message_thread_id` (general chat) |
+| `TELEGRAM_CHAT_ID` / `TELEGRAM_GROUP_ID` | no | no primary destination |
+| `TELEGRAM_THREAD_ID` / `TELEGRAM_TOPIC_CI` | no | message posts without `message_thread_id` (general chat) |
+| `TELEGRAM_CHANNEL_ID` | no | release channel skipped (start text / success zip) |
+| `TELEGRAM_TOPIC_LOG` | no | failure log tail not sent |
+| `TELEGRAM_ERROR_CHANNEL_ID` | no | error channel skipped on failure |
 
 Basic build + release need **no secrets** beyond the default `GITHUB_TOKEN`
 (permission `contents: write` for the release job).

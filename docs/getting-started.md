@@ -109,25 +109,38 @@ or flash `lk`/`dtbo`/`preloader` images from a kernel CI (brick risk).
 
 ## Telegram notifications (optional)
 
-Add two secrets to **your** repo (`Settings → Secrets and variables → Actions`):
+Add secrets to **your** repo (`Settings → Secrets and variables → Actions`):
 
 | secret | value |
 |---|---|
 | `TELEGRAM_BOT_TOKEN` | bot token, e.g. `123456:ABC-...` |
-| `TELEGRAM_CHAT_ID` | chat/group id, e.g. `-1001234567890` |
+| `TELEGRAM_CHAT_ID` | primary chat/group id, e.g. `-1001234567890` |
 | `TELEGRAM_THREAD_ID` | optional forum topic id, e.g. `47` |
+| `TELEGRAM_CHANNEL_ID` | optional release channel (zip document on success) |
+| `TELEGRAM_TOPIC_LOG` | optional log topic id (log tail on failure) |
+| `TELEGRAM_ERROR_CHANNEL_ID` | optional error channel (detail on failure) |
 
-Then add the steps (all statuses share one uniform layout; the message always
-names the source repo/branch/commit + defconfig + toolchain):
+> Fork convention: topic ids can be hardcoded in the workflow instead of
+> secrets (`TELEGRAM_TOPIC_CI: "47"`), matching the classic notifier setup.
+> The script accepts `TELEGRAM_GROUP_ID`/`TELEGRAM_TOPIC_CI` as aliases for
+> `TELEGRAM_CHAT_ID`/`TELEGRAM_THREAD_ID`.
+
+Routing per status: `start` → primary topic + channel; `success` → primary
+topic (short) + channel (zip document with features/changelog/download
+button); `failed` → primary topic (summary) + log topic (tail) + error
+channel (detail). Example steps:
 
 ```yaml
       - name: Notify start
-        run: ./scripts/notify-telegram.sh start "manual build"
+        run: ./scripts/notify-telegram.sh start
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          KCK_DEFCONFIG: selene_defconfig
-          KCK_TOOLCHAIN: aosp-clang
+          TELEGRAM_THREAD_ID: ${{ secrets.TELEGRAM_THREAD_ID }}
+          TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          KCK_KERNEL_DIR: .
+          KCK_SOURCE_REPO: your-org/your-kernel
+          KCK_SOURCE_BRANCH: ${{ github.ref_name }}
 
       # ... after the kernel-ci-kit step ...
 
@@ -137,18 +150,25 @@ names the source repo/branch/commit + defconfig + toolchain):
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          KCK_KERNEL_VERSION: ${{ steps.kck.outputs.kernel_version }}
+          TELEGRAM_THREAD_ID: ${{ secrets.TELEGRAM_THREAD_ID }}
+          TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TELEGRAM_TOPIC_LOG: ${{ secrets.TELEGRAM_TOPIC_LOG }}
+          TELEGRAM_ERROR_CHANNEL_ID: ${{ secrets.TELEGRAM_ERROR_CHANNEL_ID }}
+          KCK_KERNEL_DIR: .
+          KCK_SOURCE_REPO: your-org/your-kernel
+          KCK_SOURCE_BRANCH: ${{ github.ref_name }}
+          KCK_TOOLCHAIN: aosp-clang
           KCK_BUILD_SECONDS: ${{ steps.kck.outputs.build_seconds }}
-          KCK_HIT_RATE: ${{ steps.kck.outputs.ccache_hit_rate }}
 ```
 
 Without the secrets the script prints `telegram notify skipped` and exits 0 —
 never fails the build. Status values: `start`, `success`, `failed` (raw
 GitHub `job.status` values `failure`/`cancelled` are accepted and mapped to
-`failed` too). Test locally first:
+`failed` too). `VERSION`/`TAG` in the message header are derived from the
+kernel tree (`VERSION` file, branch, short sha). Test locally first:
 
 ```bash
-KCK_DRY_RUN=1 TELEGRAM_BOT_TOKEN=x TELEGRAM_CHAT_ID=y \
+KCK_DRY_RUN=1 TELEGRAM_BOT_TOKEN=x TELEGRAM_CHAT_ID=y TELEGRAM_THREAD_ID=47 \
   ./scripts/notify-telegram.sh success "selene-4.19.325.zip"
 ```
 
