@@ -57,6 +57,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           KCK_KERNEL_DIR: kernel
           SYNC_LOG: ${{ runner.temp }}/resukisu-sync.log
+          REPORT_FILE: ${{ runner.temp }}/resukisu-sync-report.md
         run: |
           set +e
           ./scripts/update-resukisu.sh > "$SYNC_LOG" 2>&1
