@@ -59,7 +59,7 @@ artifact (`upload_artifact: true` by default).
 |---|---|---|
 | `defconfig` | **required** | e.g. `selene_defconfig` |
 | `arch` | `arm64` | kernel `ARCH` |
-| `toolchain` | `aosp-clang` | preset from `presets/toolchains.yml` |
+| `toolchain` | `greenforce-clang` | preset from `presets/toolchains.yml` |
 | `toolchain_url` | *(empty)* | tarball URL, overrides preset |
 | `toolchain_sha256` | *(empty)* | verified when provided |
 | `cross_compile` | `aarch64-linux-gnu-` | `CROSS_COMPILE` |
@@ -126,7 +126,7 @@ the pins stay literal — upstream's `Kbuild` computes them with
 
 ```bash
 # toolchain (cached under $HOME/toolchain)
-TOOLCHAIN=aosp-clang ./scripts/setup-toolchain.sh
+TOOLCHAIN=greenforce-clang ./scripts/setup-toolchain.sh   # default
 
 # build
 DEFCONFIG=selene_defconfig EXTRA_MAKE_ARGS="LLVM=1 LLVM_IAS=1" ./scripts/build-kernel.sh
