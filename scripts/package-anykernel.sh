@@ -75,12 +75,12 @@ set_perm_recursive 0 0 750 750 \$RAMDISK/init* \$RAMDISK/sbin;
 } # end attributes
 
 ## boot shell variables
-block=$AK3_BLOCK;
-is_slot_device=$AK3_SLOT_DEVICE;
-ramdisk_compression=auto;
+BLOCK=$AK3_BLOCK;
+IS_SLOT_DEVICE=$AK3_SLOT_DEVICE;
+RAMDISK_COMPRESSION=auto;
 # Never patch vbmeta on MediaTek — HyperOS/MIUI validates the boot chain
 # and a broken vbmeta can hard-brick. See docs/troubleshooting.md.
-patch_vbmeta_flag=$AK3_PATCH_VBMETA;
+PATCH_VBMETA_FLAG=$AK3_PATCH_VBMETA;
 
 # import functions/variables and setup patching - see for reference (DO NOT REMOVE)
 . tools/ak3-core.sh;
@@ -197,7 +197,9 @@ rm -rf "$AK3/.git"
 
 # A device-supplied config wins over the generated template — it carries the
 # device aliases and branding the device tree has always shipped with.
-DEVICE_ANYKERNEL="$KERNEL_PATH/scripts/anykernel.sh"
+# KERNEL_PATH is relative (CI passes `kernel`), and we already cd'd into it,
+# so resolve against $PWD — not against $KERNEL_PATH a second time.
+DEVICE_ANYKERNEL="$PWD/scripts/anykernel.sh"
 if [ -n "${ANYKERNEL_REPO:-}" ]; then
   log "using fork-supplied anykernel.sh: $ANYKERNEL_REPO"
 elif [ -f "$DEVICE_ANYKERNEL" ]; then
