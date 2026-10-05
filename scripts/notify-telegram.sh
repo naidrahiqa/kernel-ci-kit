@@ -5,11 +5,14 @@
 #   notify-telegram.sh start
 #   notify-telegram.sh success [zip_file]
 #   notify-telegram.sh failed  [error_log]
+#   notify-telegram.sh custom  "<html>"
 #
 # Routing (same as the classic PawwwNunungggg CI notifier):
 #   start   -> primary topic + release channel (text)
 #   success -> primary topic (short) + release channel (zip document)
 #   failed  -> primary topic (summary) + log topic (tail) + error channel
+#   custom  -> primary topic only (caller-supplied HTML, e.g. ReSukiSU
+#              check/updater notices); raw HTML, not escaped
 #
 # Destination env (consumer repo secrets; workflow may hardcode topic ids):
 #   TELEGRAM_BOT_TOKEN        required — auto-skip (exit 0) when missing
@@ -40,10 +43,10 @@ case "$STATUS" in
     sed -n '2,32p' "$0"
     exit 0
     ;;
-  start|success|failed) ;;
+  start|success|failed|custom) ;;
   # Accept raw GitHub job.status values: failure / error / cancelled.
   failure|error|cancelled) STATUS="failed" ;;
-  *) die "usage: notify-telegram.sh start|success|failed [zip_or_log]" ;;
+  *) die "usage: notify-telegram.sh start|success|failed|custom [args]" ;;
 esac
 
 # ---- destinations -----------------------------------------------------------
@@ -461,12 +464,32 @@ ${first_error:+<code>${first_error}</code>}
   fi
 }
 
+# build_custom <html> — caller-built message to the primary topic only.
+# Used by the ReSukiSU check/updater workflows, which have their own wording.
+build_custom() {
+  local text="${1:-}"
+  if [ -z "$text" ]; then
+    warn "custom: empty message"
+    RC=1
+    return 0
+  fi
+  if [ -n "$PRIMARY" ]; then
+    tg_send "$PRIMARY" "$text" "$TOPIC_CI"
+  elif [ -n "$CHANNEL" ]; then
+    tg_send "$CHANNEL" "$text"
+  else
+    warn "custom: no primary destination configured"
+    RC=1
+  fi
+}
+
 # ---- dispatch ---------------------------------------------------------------
 run_case() {
   case "$STATUS" in
     start)   build_start ;;
     success) build_success "${1:-}" ;;
     failed)  build_failed "${1:-}" "${2:-}" ;;
+    custom)  build_custom "${1:-}" ;;
   esac
 }
 

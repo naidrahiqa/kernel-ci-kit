@@ -1,0 +1,106 @@
+name: ReSukiSU Upstream Check
+
+# Weekly check of the ReSukiSU (now BakaSU) driver pin in the kernel tree.
+# Lives in kernel-ci-kit because the kernel repo no longer tracks .github/.
+#
+# Anti-spam: exit 0 (up to date) sends nothing; only "outdated" and "error"
+# produce a Telegram message in the primary CI topic.
+
+on:
+  schedule:
+    - cron: '0 2 * * 1' # Senin 02:00 UTC = 09:00 WIB
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: resukisu-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Cek ReSukiSU upstream
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout kernel-ci-kit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Checkout kernel source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: naidrahiqa/android_kernel_xiaomi_mt6768-k419
+          ref: PawwwNunungggg24.0
+          path: kernel
+          fetch-depth: 1
+
+      - name: Run check
+        id: check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set +e
+          OUT="$(bash kernel/scripts/check-resukisu.sh 2>&1)"
+          CODE=$?
+          set -e
+          printf '%s\n' "$OUT"
+          if [ "$CODE" != "0" ] && [ "$CODE" != "1" ]; then
+            echo "::warning::ReSukiSU upstream check gagal (jaringan/API/Kbuild, exit ${CODE})"
+            CODE=2
+          fi
+          {
+            echo "report<<REPORTEOF"
+            printf '%s\n' "$OUT"
+            echo "REPORTEOF"
+            echo "status=${CODE}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Step summary
+        if: always()
+        env:
+          REPORT: ${{ steps.check.outputs.report }}
+        run: |
+          {
+            echo "## ReSukiSU upstream check"
+            echo '```'
+            printf '%s\n' "$REPORT"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Notify Telegram (outdated saja)
+        if: steps.check.outputs.status == '1'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_GROUP_ID: ${{ secrets.TELEGRAM_GROUP_ID || '-1004414006944' }}
+          TELEGRAM_TOPIC_CI: "47"
+          REPORT: ${{ steps.check.outputs.report }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          # Telegram caps a message at 4096 chars — cap by lines first so
+          # we never cut an HTML entity in half.
+          ESC="$(printf '%s\n' "$REPORT" | sed -n '1,60p' | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')"
+          TEXT="🔄 <b>ReSukiSU upstream update</b>
+
+          <pre>${ESC}</pre>
+
+          <a href='${RUN_URL}'>Detail check</a> · sync otomatis lewat workflow <b>ReSukiSU Updater</b>"
+          ./scripts/notify-telegram.sh custom "$TEXT"
+
+      - name: Notify Telegram (check error)
+        if: steps.check.outputs.status == '2'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_GROUP_ID: ${{ secrets.TELEGRAM_GROUP_ID || '-1004414006944' }}
+          TELEGRAM_TOPIC_CI: "47"
+          REPORT: ${{ steps.check.outputs.report }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          # Telegram caps a message at 4096 chars — cap by lines first so
+          # we never cut an HTML entity in half.
+          ESC="$(printf '%s\n' "$REPORT" | sed -n '1,60p' | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')"
+          TEXT="❌ <b>ReSukiSU check gagal</b>
+
+          <pre>${ESC}</pre>
+
+          <a href='${RUN_URL}'>Detail run</a>"
+          ./scripts/notify-telegram.sh custom "$TEXT"

@@ -1,0 +1,166 @@
+name: ReSukiSU Updater
+
+# Weekly sync of the ReSukiSU (now BakaSU) driver into the kernel tree,
+# opening a PR for review instead of pushing to the main branch.
+#
+# Exit handling of scripts/update-resukisu.sh:
+#   0 (up to date) -> silent
+#   1 (changes)    -> create branch + PR + notify
+#   2 (error/conflict) -> job fails + notify (nothing is pushed)
+#
+# Needs the KERNEL_REPO_TOKEN secret (classic PAT, scope `repo`): the default
+# GITHUB_TOKEN of this repo cannot push to the kernel repo.
+
+on:
+  schedule:
+    - cron: '30 2 * * 1' # Senin 02:30 UTC = 09:30 WIB, setelah check
+  workflow_dispatch:
+    inputs:
+      kernel_repo:
+        description: 'Kernel source repo (owner/name)'
+        required: true
+        default: 'naidrahiqa/android_kernel_xiaomi_mt6768-k419'
+      kernel_ref:
+        description: 'Kernel source branch (PR base)'
+        required: true
+        default: 'PawwwNunungggg24.0'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: resukisu-updater
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: Sinkron ReSukiSU + buka PR
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout kernel-ci-kit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Checkout kernel source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ inputs.kernel_repo || 'naidrahiqa/android_kernel_xiaomi_mt6768-k419' }}
+          ref: ${{ inputs.kernel_ref || 'PawwwNunungggg24.0' }}
+          path: kernel
+          # Full history: `git apply -3` resolves pre-image blobs from the
+          # object database, and the pinned upstream content lives there.
+          fetch-depth: 0
+          token: ${{ secrets.KERNEL_REPO_TOKEN || github.token }}
+
+      - name: Sync ReSukiSU
+        id: sync
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KCK_KERNEL_DIR: kernel
+          SYNC_LOG: ${{ runner.temp }}/resukisu-sync.log
+        run: |
+          set +e
+          ./scripts/update-resukisu.sh > "$SYNC_LOG" 2>&1
+          CODE=$?
+          set -e
+          cat "$SYNC_LOG"
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+          if [ "$CODE" = "0" ] || [ "$CODE" = "1" ]; then
+            exit 0
+          fi
+          exit 1
+
+      - name: Create branch and PR
+        id: pr
+        if: steps.sync.outputs.sync_status == 'updated'
+        env:
+          GH_TOKEN: ${{ secrets.KERNEL_REPO_TOKEN }}
+          KERNEL_REPO: ${{ inputs.kernel_repo || 'naidrahiqa/android_kernel_xiaomi_mt6768-k419' }}
+          KERNEL_REF: ${{ inputs.kernel_ref || 'PawwwNunungggg24.0' }}
+          NEW_SHA: ${{ steps.sync.outputs.new_sha }}
+          NEW_TAG: ${{ steps.sync.outputs.new_tag }}
+          NEW_VERSION: ${{ steps.sync.outputs.new_version }}
+          OLD_SHA: ${{ steps.sync.outputs.old_sha }}
+          REPORT_FILE: ${{ steps.sync.outputs.report_file }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::warning::KERNEL_REPO_TOKEN is not set — cannot push a branch or open a PR"
+            echo "pr_opened=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          TITLE="build: sync ReSukiSU to ${NEW_TAG} (${NEW_SHA}, KSU_VERSION ${NEW_VERSION})"
+          BRANCH="resukisu-sync-$(date -u +%Y%m%d)-${NEW_SHA}"
+
+          # Same pin re-run: reuse the open PR instead of erroring out.
+          EXISTING="$(gh pr list --repo "$KERNEL_REPO" --head "$BRANCH" --base "$KERNEL_REF" \
+            --state open --json url --jq '.[0].url // ' || true)"
+          if [ -n "$EXISTING" ]; then
+            echo "open PR already exists for $BRANCH: $EXISTING"
+            echo "url=$EXISTING" >> "$GITHUB_OUTPUT"
+            echo "pr_opened=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git -C kernel config user.name "github-actions[bot]"
+          git -C kernel config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C kernel checkout -B "$BRANCH"
+          git -C kernel add resukisu
+          git -C kernel commit -m "$TITLE"
+          git -C kernel push origin "HEAD:refs/heads/${BRANCH}" --force
+
+          PR_URL="$(gh pr create --repo "$KERNEL_REPO" --base "$KERNEL_REF" --head "$BRANCH" \
+            --title "$TITLE" --body-file "$REPORT_FILE")"
+          echo "PR: $PR_URL"
+          echo "url=$PR_URL" >> "$GITHUB_OUTPUT"
+          echo "pr_opened=true" >> "$GITHUB_OUTPUT"
+
+      - name: Notify PR opened
+        if: steps.pr.outputs.pr_opened == 'true'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_GROUP_ID: ${{ secrets.TELEGRAM_GROUP_ID || '-1004414006944' }}
+          TELEGRAM_TOPIC_CI: "47"
+          PR_URL: ${{ steps.pr.outputs.url }}
+          OLD_SHA: ${{ steps.sync.outputs.old_sha }}
+          NEW_SHA: ${{ steps.sync.outputs.new_sha }}
+          NEW_TAG: ${{ steps.sync.outputs.new_tag }}
+          NEW_VERSION: ${{ steps.sync.outputs.new_version }}
+        run: |
+          TEXT="🔧 <b>ReSukiSU sync PR dibuka</b>
+
+          pin <code>${OLD_SHA}</code> → <code>${NEW_SHA}</code> (${NEW_TAG})
+          KSU_VERSION → <code>${NEW_VERSION}</code>
+
+          🔗 <a href='${PR_URL}'>Review PR</a> — merge kalau diff-nya aman, karena patch lokal (log level, #ifdef gate) ikut ter-merge."
+          ./scripts/notify-telegram.sh custom "$TEXT"
+
+      - name: Notify missing PAT
+        if: steps.pr.outputs.pr_opened == 'false'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_GROUP_ID: ${{ secrets.TELEGRAM_GROUP_ID || '-1004414006944' }}
+          TELEGRAM_TOPIC_CI: "47"
+          OLD_SHA: ${{ steps.sync.outputs.old_sha }}
+          NEW_SHA: ${{ steps.sync.outputs.new_sha }}
+        run: |
+          TEXT="⚠️ <b>ReSukiSU sync: KERNEL_REPO_TOKEN belum diset</b>
+
+          Ada update <code>${OLD_SHA}</code> → <code>${NEW_SHA}</code> tapi PR tidak bisa dibuka. Bikin classic PAT (scope <code>repo</code>) lalu simpan sebagai secret <code>KERNEL_REPO_TOKEN</code> di repo ini."
+          ./scripts/notify-telegram.sh custom "$TEXT"
+
+      - name: Notify failure
+        if: failure()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_GROUP_ID: ${{ secrets.TELEGRAM_GROUP_ID || '-1004414006944' }}
+          TELEGRAM_TOPIC_CI: "47"
+          TELEGRAM_TOPIC_LOG: "8"
+          TELEGRAM_ERROR_CHANNEL_ID: ${{ secrets.TELEGRAM_ERROR_CHANNEL_ID || '-1003945405514' }}
+          KCK_KERNEL_DIR: kernel
+          KCK_SOURCE_REPO: ${{ inputs.kernel_repo || 'naidrahiqa/android_kernel_xiaomi_mt6768-k419' }}
+          KCK_SOURCE_BRANCH: ${{ inputs.kernel_ref || 'PawwwNunungggg24.0' }}
+          KCK_SOURCE_SHA: ${{ github.sha }}
+          SYNC_LOG: ${{ runner.temp }}/resukisu-sync.log
+        run: |
+          CONTEXT="$(tail -25 "$SYNC_LOG" 2>/dev/null || printf 'sync gagal sebelum menulis log')"
+          ./scripts/notify-telegram.sh failed "" "$CONTEXT"
