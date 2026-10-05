@@ -140,7 +140,8 @@ tg_document() {
   local target="$1" doc_path="$2" caption="$3" buttons="${4:-}"
   local extra_args=() resp
   if [ -n "$buttons" ]; then
-    extra_args+=(--data-urlencode "reply_markup=${buttons}")
+    # NB: with -F, reply_markup must also be -F (curl rejects --data-urlencode)
+    extra_args+=(-F "reply_markup=${buttons}")
   fi
   if [ "${KCK_DRY_RUN:-0}" = "1" ]; then
     info "dry-run sendDocument -> ${target} (${doc_path})"
@@ -277,8 +278,36 @@ build_start() {
   fi
 }
 
+# Release-channel caption. Args: changelog, features, show_cl_link,
+# zip_basename, file_size, sha256. Callers strip parts until <= 1024 chars
+# (Telegram's sendDocument caption limit) — never hard-cut, that breaks HTML.
+release_caption() {
+  local cl="$1" feat="$2" with_cl_link="$3" zip_base="$4" file_size="$5" sha256="$6"
+  if [ -z "$cl" ]; then cl="<i>No changes recorded</i>"; fi
+  local out="🐾 <b>New ${BRAND} Release</b>
+
+<b>Branch:</b> <code>${BRANCH}</code> (${ANDROID_TARGET})
+<b>Commit:</b> <code>${SHA}</code>
+<b>Tag:</b> <code>${TAG}</code>
+
+<b>Features:</b>
+<pre>${feat}</pre>
+
+<b>Change Log:</b>
+${cl}"
+  if [ "$with_cl_link" = "1" ]; then
+    out="${out}
+📋 <a href=\"${REPO_URL}/blob/${BRANCH}/CHANGELOG.md\">Full changelog</a>"
+  fi
+  out="${out}
+
+<b>Download:</b> <a href=\"${DOWNLOAD_URL}\">Click Here</a>
+📦 <code>${zip_base}</code> · ${file_size} · SHA-256 <code>${sha256}…</code>"
+  printf '%s' "$out"
+}
+
 build_success() {
-  local zip_file="${1:-}" changelog_items_text safe_commit_msg notif_msg
+  local zip_file="${1:-}" safe_commit_msg notif_msg
   if [ -n "$zip_file" ] && [ ! -f "$zip_file" ]; then
     if [ -f "$KERNEL_DIR/dist/$zip_file" ]; then
       zip_file="$KERNEL_DIR/dist/$zip_file"
@@ -290,9 +319,7 @@ build_success() {
     zip_file=$(find "$KERNEL_DIR/dist" -maxdepth 1 -name '*.zip' 2>/dev/null | head -1 || true)
   fi
 
-  changelog_items_text=$(changelog_items)
   safe_commit_msg=$(html_escape "$COMMIT_MSG")
-
   # 1. primary topic: short success (no zip, no changelog block)
   notif_msg="🐾 <b>${BRAND}</b> · <code>${VERSION}</code> · <b>[${BRANCH}]</b>
 ━━━━━━━━━━━━━━━━━━━━
@@ -307,54 +334,53 @@ build_success() {
 
   # 2. release channel: zip document + release-style caption
   if [ -n "$CHANNEL" ] && [ -n "$zip_file" ] && [ -f "$zip_file" ]; then
-    local file_size sha256 features cl_count cl_text doc_caption
+    local file_size sha256 features cl_count cl_text doc_caption zip_base feat_block
+    local changelog_items_full
     file_size=$(du -h "$zip_file" | cut -f1)
     sha256=$(sha256sum "$zip_file" | cut -c1-16)
+    zip_base=$(basename "$zip_file")
     features=$(build_features)
+    changelog_items_full=$(changelog_items)
+
+    # Fit the caption into Telegram's 1024-char limit by stripping the most
+    # expendable parts first: changelog lines -> changelog link -> features.
+    # Never hard-cut (that would leave unbalanced HTML and Telegram rejects it).
+    doc_caption="$(release_caption "$changelog_items_full" "$features" 1 \
+      "$zip_base" "$file_size" "$sha256")"
     cl_count=5
-    while :; do
-      cl_text=$(printf '%s\n' "$changelog_items_text" | head -n "$cl_count")
-      if [ -z "$cl_text" ]; then cl_text="<i>No changes recorded</i>"; fi
-      doc_caption="🐾 <b>New ${BRAND} Release</b>
-
-<b>Branch:</b> <code>${BRANCH}</code> (${ANDROID_TARGET})
-<b>Commit:</b> <code>${SHA}</code>
-<b>Tag:</b> <code>${TAG}</code>
-
-<b>Features:</b>
-<pre>${features}</pre>
-
-<b>Change Log:</b>
-${cl_text}
-📋 <a href=\"${REPO_URL}/blob/${BRANCH}/CHANGELOG.md\">Full changelog</a>
-
-<b>Download:</b> <a href=\"${DOWNLOAD_URL}\">Click Here</a>
-📦 <code>$(basename "$zip_file")</code> · ${file_size} · SHA-256 <code>${sha256}…</code>"
-      if [ "${#doc_caption}" -le 1024 ]; then break; fi
-      if [ "$cl_count" -le 1 ]; then
-        cl_text="- (changelog truncated)"
-        doc_caption="🐾 <b>New ${BRAND} Release</b>
-
-<b>Branch:</b> <code>${BRANCH}</code> (${ANDROID_TARGET})
-<b>Commit:</b> <code>${SHA}</code>
-<b>Tag:</b> <code>${TAG}</code>
-
-<b>Features:</b>
-<pre>${features}</pre>
-
-<b>Change Log:</b>
-${cl_text}
-📋 <a href=\"${REPO_URL}/blob/${BRANCH}/CHANGELOG.md\">Full changelog</a>
-
-<b>Download:</b> <a href=\"${DOWNLOAD_URL}\">Click Here</a>
-📦 <code>$(basename "$zip_file")</code> · ${file_size} · SHA-256 <code>${sha256}…</code>"
-        break
-      fi
+    while [ "${#doc_caption}" -gt 1024 ] && [ "$cl_count" -gt 1 ]; do
       cl_count=$((cl_count - 1))
+      cl_text=$(printf '%s\n' "$changelog_items_full" | head -n "$cl_count")
+      doc_caption="$(release_caption "$cl_text" "$features" 1 \
+        "$zip_base" "$file_size" "$sha256")"
     done
     if [ "${#doc_caption}" -gt 1024 ]; then
-      warn "caption ${#doc_caption} chars exceeds Telegram 1024 limit"
+      doc_caption="$(release_caption "- (changelog truncated)" "$features" 1 \
+        "$zip_base" "$file_size" "$sha256")"
     fi
+    if [ "${#doc_caption}" -gt 1024 ]; then
+      doc_caption="$(release_caption "- (changelog truncated)" "$features" 0 \
+        "$zip_base" "$file_size" "$sha256")"
+    fi
+    # Still over: drop feature lines one at a time (they sit inside <pre>,
+    # so cutting on a line boundary keeps the HTML valid).
+    cl_text="- (changelog truncated)"
+    feat_block="$features"
+    while [ "${#doc_caption}" -gt 1024 ]; do
+      feat_block="$(printf '%s\n' "$feat_block" | sed '$d')"
+      if [ -z "$feat_block" ]; then
+        feat_block=" (see kernel config)"
+        doc_caption="$(release_caption "$cl_text" "$feat_block" 0 \
+          "$zip_base" "$file_size" "$sha256")"
+        break
+      fi
+      doc_caption="$(release_caption "$cl_text" "$feat_block" 0 \
+        "$zip_base" "$file_size" "$sha256")"
+    done
+    if [ "${#doc_caption}" -gt 1024 ]; then
+      warn "caption ${#doc_caption} chars still exceeds Telegram 1024 limit"
+    fi
+
     local buttons='{"inline_keyboard":[[{"text":"⬇️ Click Here","url":"'"${DOWNLOAD_URL}"'"}]]}'
     tg_document "$CHANNEL" "$zip_file" "$doc_caption" "$buttons"
   elif [ -n "$CHANNEL" ]; then
@@ -461,7 +487,12 @@ fi
 
 run_case "${2:-}" "${3:-}"
 
-if [ "$RC" -ne 0 ] && [ "${KCK_NOTIFY_STRICT:-0}" = "1" ]; then
-  die "one or more notify sends failed (KCK_NOTIFY_STRICT=1)"
+if [ "$RC" -ne 0 ]; then
+  if [ "${KCK_NOTIFY_STRICT:-0}" = "1" ]; then
+    die "one or more notify sends failed (KCK_NOTIFY_STRICT=1)"
+  fi
+  if [ "${GITHUB_ACTIONS:-}" = "true" ]; then
+    printf '::warning title=Telegram notify::one or more destinations failed (see log above)\n'
+  fi
 fi
 exit 0
