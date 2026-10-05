@@ -29,7 +29,7 @@ on:
       toolchain:
         description: 'Toolchain preset (aosp-clang | proton-clang | greenforce-clang)'
         required: true
-        default: 'aosp-clang'
+        default: 'greenforce-clang'
       extra_make_args:
         description: 'Extra make args, verbatim'
         required: true
@@ -68,7 +68,7 @@ on:
         description: 'Toolchain preset (aosp-clang | proton-clang | greenforce-clang)'
         type: string
         required: false
-        default: 'aosp-clang'
+        default: 'greenforce-clang'
       extra_make_args:
         description: 'Extra make args, verbatim'
         type: string

@@ -17,7 +17,7 @@ inputs:
     default: 'arm64'
   toolchain:
     description: 'Preset name from presets/toolchains.yml (aosp-clang | proton-clang | greenforce-clang).'
-    default: 'aosp-clang'
+    default: 'greenforce-clang'
   toolchain_url:
     description: 'Tarball URL override — wins over the preset (type becomes tarball).'
     default: ''
