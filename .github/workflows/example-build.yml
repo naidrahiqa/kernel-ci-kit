@@ -128,7 +128,7 @@ jobs:
         with:
           defconfig: ${{ inputs.defconfig || 'selene_defconfig' }}
           device_name: ${{ inputs.device_name || 'selene' }}
-          toolchain: ${{ inputs.toolchain || 'aosp-clang' }}
+          toolchain: ${{ inputs.toolchain || 'greenforce-clang' }}
           extra_make_args: ${{ inputs.extra_make_args || 'LLVM=1 LLVM_IAS=1' }}
           kernel_path: kernel
 
@@ -145,7 +145,7 @@ jobs:
           KCK_SOURCE_REPO: ${{ inputs.kernel_repo || 'naidrahiqa/android_kernel_xiaomi_mt6768-k419' }}
           KCK_SOURCE_BRANCH: ${{ inputs.kernel_ref || 'PawwwNunungggg24.0' }}
           KCK_SOURCE_SHA: ${{ github.sha }}
-          KCK_TOOLCHAIN: ${{ inputs.toolchain || 'aosp-clang' }}
+          KCK_TOOLCHAIN: ${{ inputs.toolchain || 'greenforce-clang' }}
           KCK_BUILD_SECONDS: ${{ steps.kck.outputs.build_seconds }}
 
       - name: Notify failure
@@ -161,7 +161,7 @@ jobs:
           KCK_SOURCE_REPO: ${{ inputs.kernel_repo || 'naidrahiqa/android_kernel_xiaomi_mt6768-k419' }}
           KCK_SOURCE_BRANCH: ${{ inputs.kernel_ref || 'PawwwNunungggg24.0' }}
           KCK_SOURCE_SHA: ${{ github.sha }}
-          KCK_TOOLCHAIN: ${{ inputs.toolchain || 'aosp-clang' }}
+          KCK_TOOLCHAIN: ${{ inputs.toolchain || 'greenforce-clang' }}
 
       - name: Attach zip to GitHub Release (tag v*)
         if: startsWith(github.ref, 'refs/tags/v')

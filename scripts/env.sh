@@ -28,7 +28,7 @@ BUILD_LOG="${BUILD_LOG:-build.log}"
 EXTRA_MAKE_ARGS="${EXTRA_MAKE_ARGS:-}"
 
 # ---- toolchain defaults ----------------------------------------------------
-TOOLCHAIN="${TOOLCHAIN:-aosp-clang}"
+TOOLCHAIN="${TOOLCHAIN:-greenforce-clang}"  # project toolchain (PGO+ThinLTO+O3+Polly)
 TOOLCHAIN_URL="${TOOLCHAIN_URL:-}"       # overrides preset (tarball URL)
 TOOLCHAIN_SHA256="${TOOLCHAIN_SHA256:-}" # verify tarball when provided
 TOOLCHAIN_VERSION="${TOOLCHAIN_VERSION:-}" # overrides preset ref/dir (e.g. clang-r487747c)

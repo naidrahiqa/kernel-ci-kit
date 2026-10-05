@@ -2,7 +2,7 @@
 # Download and prepare the compiler toolchain for kernel-ci-kit.
 #
 # Local usage:
-#   TOOLCHAIN=aosp-clang ./scripts/setup-toolchain.sh
+#   TOOLCHAIN=greenforce-clang ./scripts/setup-toolchain.sh   (default)
 #   TOOLCHAIN_URL=https://... ./scripts/setup-toolchain.sh
 #   ./scripts/setup-toolchain.sh --print-cache-key   # for actions/cache
 #
