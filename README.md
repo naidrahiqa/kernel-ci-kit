@@ -133,6 +133,10 @@ Lint: `shellcheck -x -P scripts scripts/*.sh` and
   of a green run).
 - `dtbo.img`/merged `dtb` are staged **next to** the zip, never inside it —
   flashing dtbo via AnyKernel3 is device-specific and can brick.
+- Only the **preferred** image (`Image.gz-dtb`, else `Image.gz`, …) goes in the
+  zip. AK3 picks a kernel by its own fixed priority list (`Image` precedes
+  `Image.gz-dtb`), so shipping every build output both 2.5× the zip size and
+  selects the wrong format; the zip stays ~15 MB like the classic CI zip.
 - apt packages are installed fresh each run (no apt cache — it saves < 1 min
   and adds complexity).
 - On tag `v*`, `release.yml` creates the toolkit release and `example-build.yml`

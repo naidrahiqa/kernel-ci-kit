@@ -25,6 +25,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/), versioning:
 - Notifications landed in the general forum topic: `TELEGRAM_THREAD_ID`
   was never passed by the example workflow.
 - Real-send path crashed with `TMP_NOTIFY: unbound variable`.
+- Release zips never reached Telegram: `curl` exits `rc=2` when
+  `--data-urlencode` is mixed with `-F`, so the request was never built.
+- Release caption exceeded Telegram's 1024-char limit; it is now trimmed
+  (changelog lines → changelog link → feature lines) instead of hard-cut,
+  which would leave unbalanced HTML.
+- A failed notification was silent in the run; it now emits a GitHub
+  `::warning` annotation.
+- AnyKernel3 zip carried **every** built image (~41 MB) while AK3 selects
+  a kernel by its own priority list, where a raw `Image` beats
+  `Image.gz-dtb` — wrong format flashed and 2.5× the size. Only the
+  preferred image is packaged now (~15 MB, on par with the classic CI
+  zip), with a post-assembly check that exactly one image is present.
 
 ## [0.1.0] - 2026-10-04
 

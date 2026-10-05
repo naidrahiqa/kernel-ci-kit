@@ -94,6 +94,11 @@ DEVICE_NAME=selene ./scripts/package-anykernel.sh
 - Hit rate ccache > 80% butuh **run ke-2**.
 - `dtbo.img`/`dtb` ditaruh di **sebelah** zip, bukan di dalam — flashing
   dtbo via AK3 berisiko brick.
+- Cuma image **prioritas** (`Image.gz-dtb`, kalau tak ada `Image.gz`, …) yang
+  masuk zip. AK3 memilih image lewat daftar prioritas tetapnya (`Image`
+  sebelum `Image.gz-dtb`), jadi mengirim semua hasil build membuat zip 2,5×
+  lebih besar **dan** format yang salah ter-flash; zip jadi ~15 MB seperti
+  zip CI lama.
 - Tag `v*`: `release.yml` bikin release, `example-build.yml` nyemat zip
   kernel ke release yang sama.
 

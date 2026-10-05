@@ -5,9 +5,12 @@
 #   DEVICE_NAME=selene KERNEL_VERSION=4.19.325-mykernel ./scripts/package-anykernel.sh
 #
 # Reads the image manifest written by build-kernel.sh (out/kck-images.txt).
-# Kernel images (Image*) go into the zip; dtbo.img / merged dtb are staged
-# NEXT TO the zip instead — flashing dtbo/dtb via AnyKernel3 is
-# device-specific and can brick (docs/troubleshooting.md).
+# Exactly ONE kernel image (the preferred one, normally Image.gz-dtb) goes into
+# the zip — AnyKernel3 flashes a single image and picks it by its own fixed
+# priority list, so shipping extras makes it choose the wrong format.
+# dtbo.img / merged dtb are staged NEXT TO the zip instead — flashing
+# dtbo/dtb via AnyKernel3 is device-specific and can brick
+# (docs/troubleshooting.md).
 #
 # When ANYKERNEL_REPO is empty, upstream AnyKernel3 is cloned and anykernel.sh
 # is generated from this script's template. When ANYKERNEL_REPO points at your
@@ -115,6 +118,35 @@ done < "$MANIFEST"
 
 [ "${#KERNEL_IMAGES[@]}" -gt 0 ] || die "manifest has no kernel image (Image*) — nothing to package"
 
+# AnyKernel3 flashes exactly one kernel image, and picks it by its own fixed
+# priority list (tools/ak3-core.sh: "zImage ... Image Image.gz Image.gz-dtb ...").
+# Shipping more than one makes AK3 pick the wrong one — e.g. a raw Image (30 MB)
+# beats Image.gz-dtb there and is not what the boot image expects. So pick one
+# image ourselves, preferring the compressed+dtb variants.
+PRIMARY_IMAGE=""
+for cand in Image.gz-dtb Image.gz Image-dtb Image zImage-dtb zImage; do
+  for img in "${KERNEL_IMAGES[@]}"; do
+    if [ "$(basename -- "$img")" = "$cand" ]; then
+      PRIMARY_IMAGE="$img"
+      break 2
+    fi
+  done
+done
+if [ -z "$PRIMARY_IMAGE" ]; then
+  PRIMARY_IMAGE="${KERNEL_IMAGES[0]}"
+fi
+log "primary image: $(basename -- "$PRIMARY_IMAGE")"
+
+SKIPPED_IMAGES=()
+for img in "${KERNEL_IMAGES[@]}"; do
+  if [ "$img" != "$PRIMARY_IMAGE" ]; then
+    SKIPPED_IMAGES+=("$(basename -- "$img")")
+  fi
+done
+if [ "${#SKIPPED_IMAGES[@]}" -gt 0 ]; then
+  log "not packaged (AK3 flashes exactly one image): ${SKIPPED_IMAGES[*]}"
+fi
+
 # ---- safety: never let bootchain blobs near the zip ------------------------
 # TODO(verify): extend the blocklist if your device has extra critical parts.
 for line in "${KERNEL_IMAGES[@]}" "${EXTRA_IMAGES[@]+"${EXTRA_IMAGES[@]}"}"; do
@@ -165,10 +197,19 @@ else
   generate_anykernel_sh "$AK3/anykernel.sh"
 fi
 
-for img in "${KERNEL_IMAGES[@]}"; do
-  cp "$img" "$AK3/"
-  log "staged: $img"
+cp "$PRIMARY_IMAGE" "$AK3/"
+log "staged: $PRIMARY_IMAGE"
+
+# Post-assembly safety: AK3 must see exactly one kernel image, otherwise it
+# picks by its own priority order and can flash a format the boot image lacks.
+IMAGE_COUNT=0
+for f in "$AK3"/Image "$AK3"/zImage "$AK3"/Image.* "$AK3"/zImage.*; do
+  if [ -f "$f" ]; then
+    IMAGE_COUNT=$((IMAGE_COUNT + 1))
+    [ "$IMAGE_COUNT" -le 1 ] || die "AK3 tree holds multiple kernel images — flashing the wrong one risks a bootloop"
+  fi
 done
+[ "$IMAGE_COUNT" -eq 1 ] || die "AK3 tree has no kernel image — nothing to flash"
 
 # Post-assembly blocklist scan (defense in depth, incl. fork contents).
 # Note: Image.gz-dtb ends in "-dtb", not ".dtb" — it is NOT matched.
