@@ -39,6 +39,11 @@ on:
   # repository's events). See kernel/.github/workflows/build.yml.
   workflow_call:
     inputs:
+      kit_repo:
+        description: 'This toolkit repo (owner/kernel-ci-kit) — defaults to the repo the workflow file came from'
+        type: string
+        required: false
+        default: 'naidrahiqa/kernel-ci-kit'
       kernel_repo:
         description: 'Kernel source repo (owner/name)'
         type: string
@@ -86,8 +91,15 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     steps:
+      # Explicit repository + path: when this workflow is CALLED from another
+      # repo, github.repository is the caller's, so the default checkout would
+      # fetch the kernel source twice and ./kit would not be the toolkit.
       - name: Checkout kernel-ci-kit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ inputs.kit_repo || github.repository }}
+          ref: ${{ inputs.kit_repo && 'main' || github.ref }}
+          path: kit
 
       - name: Checkout kernel source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -98,7 +110,7 @@ jobs:
           fetch-depth: 0
 
       - name: Notify start
-        run: ./scripts/notify-telegram.sh start
+        run: ./kit/scripts/notify-telegram.sh start
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_GROUP_ID: ${{ secrets.TELEGRAM_GROUP_ID || '-1004414006944' }}
@@ -112,7 +124,7 @@ jobs:
 
       - name: Build with kernel-ci-kit
         id: kck
-        uses: ./
+        uses: ./kit
         with:
           defconfig: ${{ inputs.defconfig || 'selene_defconfig' }}
           device_name: ${{ inputs.device_name || 'selene' }}
@@ -122,7 +134,7 @@ jobs:
 
       - name: Notify success
         if: success()
-        run: ./scripts/notify-telegram.sh success "${{ steps.kck.outputs.zip_name }}"
+        run: ./kit/scripts/notify-telegram.sh success "${{ steps.kck.outputs.zip_name }}"
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_GROUP_ID: ${{ secrets.TELEGRAM_GROUP_ID || '-1004414006944' }}
@@ -138,7 +150,7 @@ jobs:
 
       - name: Notify failure
         if: failure()
-        run: ./scripts/notify-telegram.sh failed
+        run: ./kit/scripts/notify-telegram.sh failed
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_GROUP_ID: ${{ secrets.TELEGRAM_GROUP_ID || '-1004414006944' }}
