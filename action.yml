@@ -49,8 +49,8 @@ inputs:
     description: 'Your AnyKernel3 fork URL. Empty = upstream osm0sis/AnyKernel3 with generated anykernel.sh.'
     default: ''
   anykernel_branch:
-    description: 'AnyKernel3 branch to clone.'
-    default: 'master'
+    description: 'AnyKernel3 branch or commit to clone (pinned — see scripts/env.sh).'
+    default: 'dca9dc3'
   device_name:
     description: 'Device codename (zip name + AK3 device.name1), e.g. selene.'
     required: true

@@ -44,7 +44,12 @@ CCACHE_DIR="${CCACHE_DIR:-$HOME/.cache/kernel-ci-kit-ccache}"
 
 # ---- packaging defaults ----------------------------------------------------
 ANYKERNEL_REPO="${ANYKERNEL_REPO:-}"     # empty = upstream osm0sis/AnyKernel3
-ANYKERNEL_BRANCH="${ANYKERNEL_BRANCH:-master}"
+# Pinned to the revision the pre-kit CI used and flashed successfully on
+# selene. AK3 cea8f97 (2026-06-28, "remove all backwards compat") deleted the
+# lowercase block=/is_slot_device= aliases our configs rely on, so floating
+# on `master` produced zips that abort with "Unable to determine partition".
+# scripts/package-anykernel.sh has a guard for this — bump both together.
+ANYKERNEL_BRANCH="${ANYKERNEL_BRANCH:-dca9dc3}"
 DEVICE_NAME="${DEVICE_NAME:-}"
 # NOTE: no braces inside ${VAR:-default} — bash would close the expansion at
 # the first '}' and silently mangle the template (zip names came out broken).

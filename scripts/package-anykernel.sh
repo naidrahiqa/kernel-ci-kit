@@ -185,16 +185,36 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 AK3="$TMP/ak3"
 
-log "cloning AnyKernel3: $AK3_REPO (branch: $ANYKERNEL_BRANCH)"
-git clone --depth 1 --branch "$ANYKERNEL_BRANCH" "$AK3_REPO" "$AK3" \
-  || die "failed to clone $AK3_REPO (check anykernel_repo / anykernel_branch)"
+log "cloning AnyKernel3: $AK3_REPO (ref: $ANYKERNEL_BRANCH)"
+# `--branch` only takes a branch/tag; a commit SHA needs a full clone + checkout.
+if ! git clone --quiet --depth 1 --branch "$ANYKERNEL_BRANCH" "$AK3_REPO" "$AK3" 2>/dev/null; then
+  rm -rf "$AK3"
+  if ! git clone --quiet "$AK3_REPO" "$AK3" || ! git -C "$AK3" checkout --quiet "$ANYKERNEL_BRANCH"; then
+    die "failed to clone $AK3_REPO at $ANYKERNEL_BRANCH (check anykernel_repo / anykernel_branch)"
+  fi
+fi
 rm -rf "$AK3/.git"
 
+# A device-supplied config wins over the generated template — it carries the
+# device aliases and branding the device tree has always shipped with.
+DEVICE_ANYKERNEL="$KERNEL_PATH/scripts/anykernel.sh"
 if [ -n "${ANYKERNEL_REPO:-}" ]; then
   log "using fork-supplied anykernel.sh: $ANYKERNEL_REPO"
+elif [ -f "$DEVICE_ANYKERNEL" ]; then
+  log "using device anykernel.sh: $DEVICE_ANYKERNEL"
+  cp "$DEVICE_ANYKERNEL" "$AK3/anykernel.sh"
 else
   log "generating anykernel.sh (device: $DEVICE_NAME)"
   generate_anykernel_sh "$AK3/anykernel.sh"
+fi
+
+# Guard: AK3 cea8f97 (2026-06-28) dropped the lowercase block=/is_slot_device=
+# aliases, so such a config leaves $BLOCK empty and the flash aborts with
+# "Unable to determine partition" — fail here, not after a 16 minute build.
+# shellcheck disable=SC2016  # literal '$block' is the AK3 code we grep for
+if grep -qE '^[[:space:]]*block=' "$AK3/anykernel.sh" \
+   && ! grep -q 'BLOCK="$block"' "$AK3/tools/ak3-core.sh"; then
+  die "anykernel.sh uses lowercase block= but AnyKernel3 @ $ANYKERNEL_BRANCH no longer maps it (cea8f97) — keep anykernel_branch=dca9dc3 or convert the config to BLOCK=/IS_SLOT_DEVICE="
 fi
 
 cp "$PRIMARY_IMAGE" "$AK3/"
