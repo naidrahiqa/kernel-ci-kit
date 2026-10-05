@@ -34,15 +34,53 @@ on:
         description: 'Extra make args, verbatim'
         required: true
         default: 'LLVM=1 LLVM_IAS=1'
+  # Cross-repo trigger: a consumer repo's own workflow can call this one
+  # (its `on.push` lives in THAT repo — a workflow never reacts to another
+  # repository's events). See kernel/.github/workflows/build.yml.
+  workflow_call:
+    inputs:
+      kernel_repo:
+        description: 'Kernel source repo (owner/name)'
+        type: string
+        required: false
+        default: 'naidrahiqa/android_kernel_xiaomi_mt6768-k419'
+      kernel_ref:
+        description: 'Kernel source branch/tag/SHA'
+        type: string
+        required: false
+        default: 'PawwwNunungggg24.0'
+      defconfig:
+        description: 'Kernel defconfig target'
+        type: string
+        required: false
+        default: 'selene_defconfig'
+      device_name:
+        description: 'Device codename (zip + AK3 device check)'
+        type: string
+        required: false
+        default: 'selene'
+      toolchain:
+        description: 'Toolchain preset (aosp-clang | proton-clang | greenforce-clang)'
+        type: string
+        required: false
+        default: 'aosp-clang'
+      extra_make_args:
+        description: 'Extra make args, verbatim'
+        type: string
+        required: false
+        default: 'LLVM=1 LLVM_IAS=1'
   push:
     tags: ['v*']
 
 permissions:
   contents: write
 
+# group includes the repository: caller runs and kit-internal runs must not
+# cancel each other. Pushes cancel their own in-flight build (only the newest
+# commit is worth the 10 minutes), tags/dispatches queue instead.
 concurrency:
-  group: example-build-${{ github.ref }}
-  cancel-in-progress: false
+  group: example-build-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'push' }}
 
 jobs:
   build:
