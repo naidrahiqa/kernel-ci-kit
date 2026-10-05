@@ -75,19 +75,49 @@ Tanpa secret, step notif auto-skip (build tetap jalan, nol secret dibutuhkan).
 Pesan HTML seragam (branch, commit, tag, link build) — format sama dengan
 notifier CI PawwwNunungggg klasik.
 
+## Workflow terjadwal (opsional)
+
+Dua cron mingguan ada di **repo ini** (repo kernel tidak lagi track
+`.github/`), keduanya juga bisa `workflow_dispatch`:
+
+| Workflow | Cron (UTC) | Isi |
+|---|---|---|
+| `resukisu-check.yml` | Senin 02:00 | Jalankan `scripts/check-resukisu.sh` milik repo kernel (di-checkout ke `kernel/`). Notifikasi Telegram **hanya** kalau pin driver tertinggal — diam kalau sudah up to date, pesan pendek kalau check error. |
+| `resukisu-updater.yml` | Senin 02:30 | Sinkron upstream `kernel/` + `uapi/` ke `resukisu/` pakai `git apply -3` (patch lokal selamat; konflik bikin gagal, bukan ditimpa), re-pin `resukisu/Kbuild`, lalu buka **PR** untuk direview. Tidak pernah push ke branch utama. |
+
+Upstream: `Baka-SU/BakaSU` — proyek ini dulu namanya `ReSukiSU/ReSukiSU`
+(GitHub rename 2026-10-05; URL lama masih redirect, dan kedua script ikut
+follow redirect jadi rename berikutnya tetap aman).
+
+`resukisu-updater.yml` butuh satu secret ekstra, **`KERNEL_REPO_TOKEN`**
+(classic PAT, scope `repo`): `GITHUB_TOKEN` repo ini tidak bisa push branch
+ke repo kernel. Selama belum diset, job cuma kasih info di Telegram lalu
+berhenti rapi, bukan gagal.
+
+Keamanan sync: `scripts/update-resukisu.sh` menolak jalan kalau `resukisu/`
+kotor, mengembalikan tree kalau 3-way merge tak tersedia, dan memastikan pin
+tetap literal — `Kbuild` upstream menghitung pin dengan `$(shell git ...)`
+yang di dalam tree kernel balikin `KSU_VERSION` 865000+.
+
 ## Pemakaian lokal
 
 ```bash
 TOOLCHAIN=aosp-clang ./scripts/setup-toolchain.sh
 DEFCONFIG=selene_defconfig EXTRA_MAKE_ARGS="LLVM=1 LLVM_IAS=1" ./scripts/build-kernel.sh
 DEVICE_NAME=selene ./scripts/package-anykernel.sh
+
+# sinkron ReSukiSU (diff ditinggal staged buat review; exit 1)
+KCK_KERNEL_DIR=/path/to/kernel ./scripts/update-resukisu.sh
 ```
+
+Lint: `shellcheck -x -P scripts scripts/*.sh`,
+`yamllint -s -c .yamllint.yml .`, `actionlint .github/workflows/*.yml`.
 
 ## Keterbatasan yang diketahui
 
-- Build kernel **asli belum dibuktikan di CI** — script sudah lolos
-  shellcheck/yamllint + dry-run di mock tree; run pertama di runner asli =
-  uji terima.
+- Build kernel **sudah dibuktikan di CI**: dingin ≈ 781 dtk, hangat ≈ 96–161
+  dtk dengan ccache 100%, zip ~15 MiB. Yang belum dicakup CI bagian
+  **flash/boot** — tetap harus dites di device.
 - `aosp-clang` (`clang-r487747c`) cuma ada di branch `android14-release`
   (sudah di-GC dari `main`) — jangan diganti balik ke `main`.
 - `greenforce-clang`/`proton-clang` masih floating (`latest`/`master`).

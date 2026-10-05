@@ -15,6 +15,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/), versioning:
   (`TELEGRAM_TOPIC_LOG`, `TELEGRAM_ERROR_CHANNEL_ID`).
 - HTML message layout with branch → Android target mapping, KSU version
   and enabled-feature blocks read from the built `.config`.
+- `scripts/update-resukisu.sh`: three-way sync of the ReSukiSU driver
+  (`kernel/` + `uapi/` upstream → `resukisu/` in the kernel tree) with
+  `git apply -3`, pin re-write in `resukisu/Kbuild`, a Markdown sync
+  report and exit codes 0 = up to date / 1 = changes staged / 2 =
+  error or conflict (the tree is restored).
+- `notify-telegram.sh custom "<html>"` mode: send caller-built HTML to
+  the primary CI topic, for workflows with their own wording.
+- `resukisu-check.yml` (Mon 02:00 UTC) and `resukisu-updater.yml`
+  (Mon 02:30 UTC): weekly driver status ping and auto-sync that opens a
+  **PR** against the kernel branch instead of pushing. The updater
+  needs the `KERNEL_REPO_TOKEN` classic PAT (`repo` scope).
+- API calls follow HTTP redirects, so the upstream rename
+  `ReSukiSU/ReSukiSU` → `Baka-SU/BakaSU` cannot break them.
 
 ### Changed
 - `notify-telegram.sh` CLI: `start` / `success [zip]` / `failed [log]`;

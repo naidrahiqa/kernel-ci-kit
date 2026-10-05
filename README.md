@@ -98,6 +98,30 @@ commit, tag and build link, matching the classic PawwwNunungggg CI layout.
 See
 [docs/getting-started.md](docs/getting-started.md#telegram-notifications-optional).
 
+## Scheduled workflows (optional)
+
+Two weekly cron jobs live in **this** repo (the kernel repo no longer tracks
+`.github/`); both are also `workflow_dispatch`-able:
+
+| Workflow | Cron (UTC) | What it does |
+|---|---|---|
+| `resukisu-check.yml` | Mon 02:00 | Runs the kernel repo's own `scripts/check-resukisu.sh` (checked out under `kernel/`). Telegram only when the driver pin is behind — silent when up to date, and a short error message when the API/Kbuild check fails. |
+| `resukisu-updater.yml` | Mon 02:30 | Syncs upstream `kernel/` + `uapi/` into `resukisu/` with `git apply -3` (local patches survive; a conflict aborts instead of clobbering), re-pins `resukisu/Kbuild`, then opens a **PR** for review. Never pushes to the main branch. |
+
+Upstream is `Baka-SU/BakaSU` — the project formerly named `ReSukiSU/ReSukiSU`
+(GitHub renamed it on 2026-10-05; the old URL still redirects, but both
+scripts follow redirects so the next rename does not break them).
+
+`resukisu-updater.yml` needs one extra secret, **`KERNEL_REPO_TOKEN`**
+(classic PAT, scope `repo`): this repo's `GITHUB_TOKEN` cannot push a branch
+into the kernel repo. Until it is set the job says so in Telegram and stops
+cleanly instead of failing.
+
+Sync safety: `scripts/update-resukisu.sh` refuses to run over a dirty
+`resukisu/`, restores the tree if the 3-way merge is unavailable, and asserts
+the pins stay literal — upstream's `Kbuild` computes them with
+`$(shell git ...)`, which reports `KSU_VERSION` 865000+ inside a kernel tree.
+
 ## Local usage
 
 ```bash
@@ -113,18 +137,21 @@ DEVICE_NAME=selene ./scripts/package-anykernel.sh
 # notify (dry-run first: prints every destination + payload)
 KCK_DRY_RUN=1 TELEGRAM_BOT_TOKEN=x TELEGRAM_CHAT_ID=y TELEGRAM_THREAD_ID=47 \
   ./scripts/notify-telegram.sh success "selene-4.19.325.zip"
+
+# ReSukiSU driver sync (leaves the diff staged for review; exits 1)
+KCK_KERNEL_DIR=/path/to/kernel ./scripts/update-resukisu.sh
 ```
 
-Requirements: Linux, `bash`, `git`, `curl`, `zip`, `ccache` (optional).
-Lint: `shellcheck -x -P scripts scripts/*.sh` and
-`yamllint -s -c .yamllint.yml .`.
+Requirements: Linux, `bash`, `git`, `curl`, `jq`, `zip`, `ccache` (optional).
+Lint: `shellcheck -x -P scripts scripts/*.sh`, `yamllint -s -c .yamllint.yml .`
+and `actionlint .github/workflows/*.yml`.
 
 ## Known limitations
 
-- **Real kernel build not yet proven by CI.** Scripts are shellcheck/yamllint
-  clean and were exercised against a mock kernel tree; the first full run on a
-  real tree (e.g. MT6768 k419) may surface toolchain/defconfig issues — treat
-  the first run as the acceptance test.
+- The kernel build **is** proven on the hosted runner: cold ≈ 781 s, warm ≈ 96–161 s
+  with ccache at 100 %, zips ~15 MiB. What is not exercised by CI is the
+  **flash/boot** part — that still has to be done on the device (see the
+  kernel repo's `flashing-boot-test` skill).
 - `aosp-clang` lives on branch `android14-release` — `clang-r487747c` was
   garbage-collected from `main`. Don't "simplify" the ref back to `main`.
 - `greenforce-clang`/`proton-clang` float upstream (`latest`/`master`); only

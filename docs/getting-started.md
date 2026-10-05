@@ -176,6 +176,35 @@ KCK_DRY_RUN=1 TELEGRAM_BOT_TOKEN=x TELEGRAM_CHAT_ID=y TELEGRAM_THREAD_ID=47 \
 > consume the action remotely, vendor the script (copy it) or keep your
 > existing notification job.
 
+## Scheduled ReSukiSU workflows (optional)
+
+`resukisu-check.yml` (Mon 02:00 UTC) and `resukisu-updater.yml`
+(Mon 02:30 UTC) live in this repo and run against your kernel repo on a
+weekly cron. Copy them only if your kernel tree keeps the ReSukiSU driver in
+`resukisu/`.
+
+| secret | needed by | value |
+|---|---|---|
+| `TELEGRAM_BOT_TOKEN` (+ destination) | both | same as the build workflow — optional, skip = silent |
+| `KERNEL_REPO_TOKEN` | `resukisu-updater.yml` only | classic PAT with `repo` scope; pushes the `resukisu-sync-*` branch to the kernel repo. Without it the job posts a warning and stops instead of failing. |
+
+The check workflow runs `scripts/check-resukisu.sh` **from the checked-out
+kernel tree** (`scripts/check-resukisu.sh`), so that script has to be fixed
+in the kernel repo too (it must follow HTTP redirects and accept the
+`Baka-SU/BakaSU` rename of upstream). The updater then stages the diff and
+opens a PR against the kernel branch — it never pushes to the branch itself.
+
+Messages are sent through `notify-telegram.sh custom "<html>"`, which
+delivers caller-built HTML to the primary CI topic and nothing else.
+Both workflows accept `workflow_dispatch` with `kernel_repo` / `kernel_ref`
+inputs for a manual run.
+
+```bash
+# local dry-run of the sync (exit 1 = changes staged, 2 = error)
+KCK_KERNEL_DIR=/path/to/kernel ./scripts/update-resukisu.sh
+cat /tmp/opencode/sync-report.md
+```
+
 ## Local parity
 
 Everything action.yml does can be run locally:
