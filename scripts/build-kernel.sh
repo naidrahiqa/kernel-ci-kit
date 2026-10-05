@@ -19,6 +19,16 @@ require_env DEFCONFIG "e.g. DEFCONFIG=selene_defconfig"
 
 cd "$KERNEL_PATH"
 
+# Build identity for /proc/version — scripts/mkcompile_h reads these from the
+# environment and otherwise falls back to `whoami`@`uname -n`, which on CI is
+# the useless runner@runnervm8df0l. Only override on CI so local builds keep
+# the real local user/host.
+if [ -n "${GITHUB_ACTIONS:-}" ]; then
+  KBUILD_BUILD_USER="${KBUILD_BUILD_USER:-naidra}"
+  KBUILD_BUILD_HOST="${KBUILD_BUILD_HOST:-github-actions}"
+  export KBUILD_BUILD_USER KBUILD_BUILD_HOST
+fi
+
 # ---- toolchain / PATH ------------------------------------------------------
 TOOLCHAIN_CLANG="${TOOLCHAIN_CLANG:-}"
 resolve_toolchain
