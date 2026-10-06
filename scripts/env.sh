@@ -55,7 +55,7 @@ DEVICE_NAME="${DEVICE_NAME:-}"
 # the first '}' and silently mangle the template (zip names came out broken).
 ZIP_NAME_TEMPLATE="${ZIP_NAME_TEMPLATE:-}"
 if [ -z "$ZIP_NAME_TEMPLATE" ]; then
-  ZIP_NAME_TEMPLATE='{device}-{version}-{date}'
+  ZIP_NAME_TEMPLATE='{device}-{version}-{toolchain}-{date}'
 fi
 
 # ---- logging helpers -------------------------------------------------------

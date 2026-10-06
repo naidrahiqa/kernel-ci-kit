@@ -7,6 +7,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/), versioning:
 ## [Unreleased]
 
 ### Added
+- Zip name template placeholder `{toolchain}` (default is now
+  `{device}-{version}-{toolchain}-{date}`) so artifacts and workflow
+  artifacts show which compiler built the kernel, e.g.
+  `selene-4.19.325-...-g292efc29c873-greenforce-clang-20261006.zip`.
+  The preset comes from the `toolchain` input (`stock` if unset).
 - Multi-destination Telegram routing (parity with the classic
   PawwwNunungggg notifier): primary forum topic
   (`TELEGRAM_TOPIC_CI`/`TELEGRAM_THREAD_ID`), release channel zip

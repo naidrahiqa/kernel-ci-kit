@@ -72,7 +72,7 @@ artifact (`upload_artifact: true` by default).
 | `anykernel_repo` | *(empty)* | your AK3 fork; empty = upstream + generated `anykernel.sh` |
 | `anykernel_branch` | `master` | AK3 branch |
 | `device_name` | **required** | zip name + AK3 `device.name1` |
-| `zip_name_template` | `{device}-{version}-{date}` | `{device}` `{version}` `{date}` |
+| `zip_name_template` | `{device}-{version}-{toolchain}-{date}` | `{device}` `{version}` `{toolchain}` `{date}` |
 | `upload_artifact` | `true` | upload zip as artifact |
 
 Full details (outputs, env vars, presets): [docs/inputs-reference.md](docs/inputs-reference.md).

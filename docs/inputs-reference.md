@@ -22,7 +22,7 @@ read when run outside CI. All inputs are strings (GitHub Actions input type).
 | `anykernel_repo` | *(empty)* | AnyKernel3 fork URL. Empty = upstream `osm0sis/AnyKernel3` **with generated `anykernel.sh`**. Non-empty = your fork's `anykernel.sh` is used untouched. |
 | `anykernel_branch` | `master` | Branch of the AK3 repo to clone. |
 | `device_name` | **required** | Zip name + AK3 `device.name1` (with `do.devicecheck=1`). |
-| `zip_name_template` | `{device}-{version}-{date}` | Placeholders `{device}`, `{version}` (=`make kernelrelease`), `{date}` (UTC `YYYYMMDD`). `.zip` appended if missing. |
+| `zip_name_template` | `{device}-{version}-{toolchain}-{date}` | Placeholders `{device}`, `{version}` (=`make kernelrelease`), `{toolchain}` (toolchain preset, e.g. `greenforce-clang`; `stock` if unset), `{date}` (UTC `YYYYMMDD`). `.zip` appended if missing. |
 | `upload_artifact` | `true` | Upload zip + sha256 as a workflow artifact. |
 
 ## Action outputs

@@ -55,8 +55,8 @@ inputs:
     description: 'Device codename (zip name + AK3 device.name1), e.g. selene.'
     required: true
   zip_name_template:
-    description: 'Zip name template. Placeholders: {device} {version} {date}.'
-    default: '{device}-{version}-{date}'
+    description: 'Zip name template. Placeholders: {device} {version} {toolchain} {date}.'
+    default: '{device}-{version}-{toolchain}-{date}'
   upload_artifact:
     description: 'Upload the zip as a workflow artifact (true/false).'
     default: 'true'
@@ -195,6 +195,7 @@ runs:
         ANYKERNEL_REPO: ${{ inputs.anykernel_repo }}
         ANYKERNEL_BRANCH: ${{ inputs.anykernel_branch }}
         ZIP_NAME_TEMPLATE: ${{ inputs.zip_name_template }}
+        TOOLCHAIN: ${{ inputs.toolchain }}
 
     - name: Upload flashable zip
       if: ${{ inputs.upload_artifact == 'true' }}

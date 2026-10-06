@@ -168,8 +168,9 @@ done
 DATE_STAMP="$(date -u +%Y%m%d)"
 SAFE_DEVICE="$(printf '%s' "$DEVICE_NAME" | tr -c 'A-Za-z0-9._-' '-' | sed 's/-\{1,\}$//')"
 SAFE_VERSION="$(printf '%s' "$KERNEL_VERSION" | tr ' /' '--')"
+SAFE_TOOLCHAIN="$(printf '%s' "${TOOLCHAIN:-stock}" | tr -c 'A-Za-z0-9._-' '-' | sed 's/-\{1,\}$//')"
 ZIP_NAME="$(printf '%s' "$ZIP_NAME_TEMPLATE" \
-  | sed "s/{device}/$SAFE_DEVICE/g; s/{version}/$SAFE_VERSION/g; s/{date}/$DATE_STAMP/g")"
+  | sed "s/{device}/$SAFE_DEVICE/g; s/{version}/$SAFE_VERSION/g; s/{toolchain}/$SAFE_TOOLCHAIN/g; s/{date}/$DATE_STAMP/g")"
 case "$ZIP_NAME" in
   *.zip) ;;
   *) ZIP_NAME="$ZIP_NAME.zip" ;;
