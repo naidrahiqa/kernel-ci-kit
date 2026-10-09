@@ -218,6 +218,25 @@ ksu_version() {
   fi
 }
 
+nomount_version() {
+  local ver="v2.1.0"
+  if [ -f "$KERNEL_DIR/fs/nomount.h" ]; then
+    local nm_raw
+    nm_raw=$(sed -n 's/#define NOMOUNT_BASE_VERSION "\([^"]*\)".*/\1/p' "$KERNEL_DIR/fs/nomount.h" 2>/dev/null | head -1)
+    if [ -z "$nm_raw" ]; then
+      nm_raw=$(sed -n 's/#define NOMOUNT_VERSION "\([^"]*\)".*/\1/p' "$KERNEL_DIR/fs/nomount.h" 2>/dev/null | head -1)
+    fi
+    if [ "$nm_raw" = "21" ]; then
+      ver="v2.1.0"
+    elif [ "$nm_raw" = "20" ]; then
+      ver="v2.0.0"
+    elif [ -n "$nm_raw" ]; then
+      ver="v${nm_raw}"
+    fi
+  fi
+  printf '%s' "$ver"
+}
+
 build_features() {
   local toolchain tcp="default" zram_algo active=""
   case "${KCK_TOOLCHAIN:-}" in
@@ -238,7 +257,7 @@ build_features() {
 
   local cfg_line
   for cfg_line in \
-    "CONFIG_NOMOUNT| NoMount = v20" \
+    "CONFIG_NOMOUNT| NoMount = $(nomount_version)" \
     "CONFIG_KSU_HOSTSREDIRECT| Hosts redirect (xxKSU) = true" \
     "CONFIG_KSU_MULTI_MANAGER_SUPPORT| Multi-manager = true" \
     "CONFIG_MODULES| Modules = true" \
@@ -397,7 +416,7 @@ build_success() {
       warn "caption ${#doc_caption} chars still exceeds Telegram 1024 limit"
     fi
 
-    local buttons='{"inline_keyboard":[[{"text":"⬇️ Kernel Zip","url":"'"${DOWNLOAD_URL}"'"},{"text":"🌿 FolkSU Manager","url":"https://github.com/LyraVoid/FolkSU/releases"}],[{"text":"🛡️ NoMount v20","url":"https://github.com/maxsteeel/nomount/releases"}]]}'
+    local buttons='{"inline_keyboard":[[{"text":"⬇️ Kernel Zip","url":"'"${DOWNLOAD_URL}"'"},{"text":"🌿 FolkSU Manager","url":"https://github.com/LyraVoid/FolkSU/releases"}],[{"text":"🛡️ NoMount '"$(nomount_version)"'","url":"https://github.com/maxsteeel/nomount/releases"}]]}'
     tg_document "$CHANNEL" "$zip_file" "$doc_caption" "$buttons"
   elif [ -n "$CHANNEL" ]; then
     warn "no zip found for release channel (looked in $KERNEL_DIR/dist)"
