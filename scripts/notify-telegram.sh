@@ -191,11 +191,18 @@ bool() {
 }
 
 ksu_version() {
-  local tag="v4.1.0" val code=""
-  if [ -f "$KERNEL_DIR/resukisu/Kbuild" ]; then
+  local tag="v0.1.0-pre6" val code=""
+  if [ -f "$KERNEL_DIR/folksu/Kbuild" ]; then
+    val=$(sed -n 's/^KSU_TAG_NAME *:= *//p' "$KERNEL_DIR/folksu/Kbuild" | head -1)
+    val=$(printf '%s' "$val" | sed 's/\$(shell .*)//; s/^ *//; s/ *$//')
+    if [ -n "$val" ]; then tag="$val"; fi
+    local local_v
+    local_v=$(sed -n 's/^KSU_LOCAL_VERSION *:= *//p' "$KERNEL_DIR/folksu/Kbuild" | head -1)
+    if [ -n "$local_v" ]; then
+      code=$((30000 + local_v))
+    fi
+  elif [ -f "$KERNEL_DIR/resukisu/Kbuild" ]; then
     val=$(sed -n 's/^KSU_TAG_NAME *:= *//p' "$KERNEL_DIR/resukisu/Kbuild" | head -1)
-    # strip a $(shell ...) wrapper if present (literal text, not expansion)
-    # shellcheck disable=SC2016
     val=$(printf '%s' "$val" | sed 's/\$(shell .*)//; s/^ *//; s/ *$//')
     if [ -n "$val" ]; then tag="$val"; fi
     local local_v
@@ -224,9 +231,15 @@ build_features() {
     "$KERNEL_DIR/drivers/block/zram/zram_drv.c" 2>/dev/null | head -1 || true)
   zram_algo="${zram_algo:-lzo}"
 
+  local mode="FolkSU"
+  if [ ! -f "$KERNEL_DIR/folksu/Kbuild" ] && [ -f "$KERNEL_DIR/resukisu/Kbuild" ]; then
+    mode="ReSukiSU"
+  fi
+
   local cfg_line
   for cfg_line in \
-    "CONFIG_NOMOUNT| NoMount = true" \
+    "CONFIG_NOMOUNT| NoMount = v20" \
+    "CONFIG_KSU_HOSTSREDIRECT| Hosts redirect (xxKSU) = true" \
     "CONFIG_KSU_MULTI_MANAGER_SUPPORT| Multi-manager = true" \
     "CONFIG_MODULES| Modules = true" \
     "CONFIG_NET_SCH_FQ| FQ qdisc = true" \
@@ -243,8 +256,8 @@ build_features() {
   done
 
   cat <<EOF
- Build mode = ReSukiSU
- KSU = $(ksu_version)
+ Build mode = ${mode}
+ Root = ${mode} $(ksu_version)
  Manual hook = $(bool "$(cfg CONFIG_KSU_MANUAL_HOOK)")
 ${active} TCP = ${tcp}
  ZRAM compressor = ${zram_algo}
@@ -384,7 +397,7 @@ build_success() {
       warn "caption ${#doc_caption} chars still exceeds Telegram 1024 limit"
     fi
 
-    local buttons='{"inline_keyboard":[[{"text":"⬇️ Click Here","url":"'"${DOWNLOAD_URL}"'"}]]}'
+    local buttons='{"inline_keyboard":[[{"text":"⬇️ Kernel Zip","url":"'"${DOWNLOAD_URL}"'"},{"text":"🌿 FolkSU Manager","url":"https://github.com/LyraVoid/FolkSU/releases"}],[{"text":"🛡️ NoMount v20","url":"https://github.com/maxsteeel/nomount/releases"}]]}'
     tg_document "$CHANNEL" "$zip_file" "$doc_caption" "$buttons"
   elif [ -n "$CHANNEL" ]; then
     warn "no zip found for release channel (looked in $KERNEL_DIR/dist)"
