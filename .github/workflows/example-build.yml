@@ -34,6 +34,10 @@ on:
         description: 'Extra make args, verbatim'
         required: true
         default: 'LLVM=1 LLVM_IAS=1'
+      zip_name_template:
+        description: 'Zip name template'
+        required: false
+        default: 'PawwwNunungggg-{toolchain}-{hash}-{date}-{version}'
   # Cross-repo trigger: a consumer repo's own workflow can call this one
   # (its `on.push` lives in THAT repo — a workflow never reacts to another
   # repository's events). See kernel/.github/workflows/build.yml.
@@ -74,6 +78,11 @@ on:
         type: string
         required: false
         default: 'LLVM=1 LLVM_IAS=1'
+      zip_name_template:
+        description: 'Zip name template'
+        type: string
+        required: false
+        default: 'PawwwNunungggg-{toolchain}-{hash}-{date}-{version}'
   push:
     tags: ['v*']
 
@@ -130,6 +139,7 @@ jobs:
           device_name: ${{ inputs.device_name || 'selene' }}
           toolchain: ${{ inputs.toolchain || 'greenforce-clang' }}
           extra_make_args: ${{ inputs.extra_make_args || 'LLVM=1 LLVM_IAS=1' }}
+          zip_name_template: ${{ inputs.zip_name_template || 'PawwwNunungggg-{toolchain}-{hash}-{date}-{version}' }}
           kernel_path: kernel
 
       - name: Notify success

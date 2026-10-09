@@ -56,7 +56,7 @@ inputs:
     required: true
   zip_name_template:
     description: 'Zip name template. Placeholders: {device} {version} {toolchain} {date}.'
-    default: '{device}-{version}-{toolchain}-{date}'
+    default: 'PawwwNunungggg-{toolchain}-{hash}-{date}-{version}'
   upload_artifact:
     description: 'Upload the zip as a workflow artifact (true/false).'
     default: 'true'

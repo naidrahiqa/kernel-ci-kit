@@ -165,12 +165,45 @@ for line in "${EXTRA_IMAGES[@]+"${EXTRA_IMAGES[@]}"}"; do
 done
 
 # ---- zip name --------------------------------------------------------------
-DATE_STAMP="$(date -u +%Y%m%d)"
+DATE_DMY="$(date -u +%d%m%Y)"
+DATE_YMD="$(date -u +%Y%m%d)"
+DATE_STAMP="$DATE_DMY"
 SAFE_DEVICE="$(printf '%s' "$DEVICE_NAME" | tr -c 'A-Za-z0-9._-' '-' | sed 's/-\{1,\}$//')"
 SAFE_VERSION="$(printf '%s' "$KERNEL_VERSION" | tr ' /' '--')"
-SAFE_TOOLCHAIN="$(printf '%s' "${TOOLCHAIN:-stock}" | tr -c 'A-Za-z0-9._-' '-' | sed 's/-\{1,\}$//')"
+
+case "${TOOLCHAIN:-}" in
+  greenforce-clang) PRETTY_TOOLCHAIN="Greenforce-Clang" ;;
+  aosp-clang)       PRETTY_TOOLCHAIN="AOSP-Clang" ;;
+  proton-clang)     PRETTY_TOOLCHAIN="Proton-Clang" ;;
+  *)                PRETTY_TOOLCHAIN="${TOOLCHAIN:-stock}" ;;
+esac
+SAFE_TOOLCHAIN="$PRETTY_TOOLCHAIN"
+
+GIT_HASH=""
+if [ -n "${GITHUB_SHA:-}" ]; then
+  GIT_HASH="${GITHUB_SHA:0:7}"
+elif [ -n "${KCK_SOURCE_SHA:-}" ]; then
+  GIT_HASH="${KCK_SOURCE_SHA:0:7}"
+else
+  GIT_HASH="$(git -C "${KERNEL_PATH:-.}" rev-parse --short=7 HEAD 2>/dev/null || git rev-parse --short=7 HEAD 2>/dev/null || echo "unknown")"
+fi
+
+RUN_NUM="${GITHUB_RUN_NUMBER:-1}"
+RUN_VER="r${RUN_NUM}"
+BRAND_NAME="${BRAND:-PawwwNunungggg}"
+
 ZIP_NAME="$(printf '%s' "$ZIP_NAME_TEMPLATE" \
-  | sed "s/{device}/$SAFE_DEVICE/g; s/{version}/$SAFE_VERSION/g; s/{toolchain}/$SAFE_TOOLCHAIN/g; s/{date}/$DATE_STAMP/g")"
+  | sed \
+    -e "s/{brand}/$BRAND_NAME/g" \
+    -e "s/{device}/$SAFE_DEVICE/g" \
+    -e "s/{toolchain}/$SAFE_TOOLCHAIN/g" \
+    -e "s/{hash}/$GIT_HASH/g" \
+    -e "s/{date_ymd}/$DATE_YMD/g" \
+    -e "s/{date_dmy}/$DATE_DMY/g" \
+    -e "s/{date}/$DATE_DMY/g" \
+    -e "s/{run}/$RUN_NUM/g" \
+    -e "s/{version}/$RUN_VER/g" \
+    -e "s/{kernelrelease}/$SAFE_VERSION/g")"
 case "$ZIP_NAME" in
   *.zip) ;;
   *) ZIP_NAME="$ZIP_NAME.zip" ;;
