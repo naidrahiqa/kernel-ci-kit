@@ -167,7 +167,6 @@ done
 # ---- zip name --------------------------------------------------------------
 DATE_DMY="$(date -u +%d%m%Y)"
 DATE_YMD="$(date -u +%Y%m%d)"
-DATE_STAMP="$DATE_DMY"
 SAFE_DEVICE="$(printf '%s' "$DEVICE_NAME" | tr -c 'A-Za-z0-9._-' '-' | sed 's/-\{1,\}$//')"
 SAFE_VERSION="$(printf '%s' "$KERNEL_VERSION" | tr ' /' '--')"
 

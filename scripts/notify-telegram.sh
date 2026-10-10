@@ -213,11 +213,19 @@ bool() {
   if [ "$1" = "y" ]; then printf 'true'; else printf 'false'; fi
 }
 
+# strip_kbuild_value <raw> — turn a Kbuild make expansion into a plain value.
+# Kbuild files carry things like KSU_TAG_NAME := $(shell git describe ...),
+# which is meaningless outside make, so drop the expansion and trim space.
+strip_kbuild_value() {
+  # shellcheck disable=SC2016  # \$ is intentional: matches the literal text
+  printf '%s' "$1" | sed 's/\$(shell .*)//; s/^ *//; s/ *$//'
+}
+
 ksu_version() {
   local tag="v0.1.0-pre6" val code=""
   if [ -f "$KERNEL_DIR/folksu/Kbuild" ]; then
     val=$(sed -n 's/^KSU_TAG_NAME *:= *//p' "$KERNEL_DIR/folksu/Kbuild" | head -1)
-    val=$(printf '%s' "$val" | sed 's/\$(shell .*)//; s/^ *//; s/ *$//')
+    val=$(strip_kbuild_value "$val")
     if [ -n "$val" ]; then tag="$val"; fi
     local local_v
     local_v=$(sed -n 's/^KSU_LOCAL_VERSION *:= *//p' "$KERNEL_DIR/folksu/Kbuild" | head -1)
@@ -226,7 +234,7 @@ ksu_version() {
     fi
   elif [ -f "$KERNEL_DIR/resukisu/Kbuild" ]; then
     val=$(sed -n 's/^KSU_TAG_NAME *:= *//p' "$KERNEL_DIR/resukisu/Kbuild" | head -1)
-    val=$(printf '%s' "$val" | sed 's/\$(shell .*)//; s/^ *//; s/ *$//')
+    val=$(strip_kbuild_value "$val")
     if [ -n "$val" ]; then tag="$val"; fi
     local local_v
     local_v=$(sed -n 's/^KSU_LOCAL_VERSION *:= *//p' "$KERNEL_DIR/resukisu/Kbuild" | head -1)
