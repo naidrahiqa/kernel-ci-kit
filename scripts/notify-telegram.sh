@@ -99,17 +99,45 @@ VERSION="${VERSION:-unknown}"
 TAG="${KCK_RELEASE_TAG:-${BRAND}-${BRANCH_TAG}-v${VERSION}-nightly-$(date +%Y%m%d)-${SHA}}"
 BUILD_TIME="${KCK_BUILD_SECONDS:-}"
 
+# resolve_artifact_id — id of the artifact this run uploaded, so Download can
+# point at the file itself instead of the run page. upload-artifact does not
+# expose it as a step output, so fall back to the run's artifact list. Public
+# repos answer unauthenticated; private ones need GITHUB_TOKEN in the env.
+# Prints nothing when it cannot resolve, and callers must treat that as
+# "fall back to the run page" rather than as an error.
+resolve_artifact_id() {
+  if [ -n "${KCK_ARTIFACT_ID:-}" ]; then
+    printf '%s' "$KCK_ARTIFACT_ID"
+    return 0
+  fi
+  [ -n "${GITHUB_RUN_ID:-}" ] && [ -n "${GITHUB_REPOSITORY:-}" ] || return 0
+  local api="${GITHUB_API_URL:-https://api.github.com}/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts"
+  local resp
+  resp=$(curl -sS -H 'Accept: application/vnd.github+json' \
+    ${GITHUB_TOKEN:+-H "Authorization: Bearer ${GITHUB_TOKEN}"} \
+    --connect-timeout 10 --max-time 30 "$api" 2>/dev/null || printf '')
+  # Success runs upload exactly one artifact (the zip); the build-log upload is
+  # failure-only, so the first id is the flashable zip.
+  printf '%s' "$resp" | grep -oE '"id":[[:space:]]*[0-9]+' | head -1 | grep -oE '[0-9]+' || true
+}
+
 BUILD_URL="$SERVER/${GITHUB_REPOSITORY:-local/local}/actions/runs/${GITHUB_RUN_ID:-0}"
 REPO_URL="$SERVER/${KCK_SOURCE_REPO:-${GITHUB_REPOSITORY:-local/local}}"
 COMMIT_URL="$REPO_URL/commit/${SHA}"
 
-# Nightly artifacts live on the Actions run page (GitHub gates artifact
-# downloads behind a login, and branch builds create no Release), so that is
-# what "Download" points at. Label and note are set from the branch vs tag case
-# so the message never implies a direct file link.
+# Nightly artifacts live on GitHub Actions. Prefer the artifact's own page so
+# the link lands on the file rather than the run; either way GitHub gates the
+# download behind a login, which the note says out loud. Tag builds get the
+# Releases page instead. If the artifact id cannot be resolved we stay on the
+# run page rather than emitting a link with a missing id in it.
 DOWNLOAD_URL="$BUILD_URL"
 DOWNLOAD_LABEL="⬇️ Open Actions run"
 DOWNLOAD_NOTE="<i>(butuh login GitHub)</i>"
+ARTIFACT_ID="$(resolve_artifact_id)"
+if [ -n "$ARTIFACT_ID" ]; then
+  DOWNLOAD_URL="$SERVER/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts/${ARTIFACT_ID}"
+  DOWNLOAD_LABEL="⬇️ Download kernel zip"
+fi
 case "${GITHUB_REF:-}" in
   refs/tags/*)
     DOWNLOAD_URL="$SERVER/${GITHUB_REPOSITORY:-local/local}/releases/tag/${GITHUB_REF_NAME}"
