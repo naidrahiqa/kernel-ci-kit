@@ -297,50 +297,44 @@ nomount_version() {
 }
 
 build_features() {
-  local toolchain tcp="default" zram_algo active=""
+  local toolchain tcp="Default" zram_algo
   case "${KCK_TOOLCHAIN:-}" in
-    aosp-clang)      toolchain="AOSP Clang" ;;
-    proton-clang)    toolchain="Proton Clang" ;;
+    aosp-clang)       toolchain="AOSP Clang" ;;
+    proton-clang)     toolchain="Proton Clang" ;;
     greenforce-clang) toolchain="Greenforce Clang" ;;
-    *)               toolchain="${KCK_TOOLCHAIN:-stock}" ;;
+    *)                toolchain="${KCK_TOOLCHAIN:-stock}" ;;
   esac
   if [ "$(cfg CONFIG_TCP_CONG_BBR)" = "y" ]; then tcp="BBR"; fi
   zram_algo=$(sed -n 's/^static const char \*default_compressor = "\([^"]*\)".*/\1/p' \
     "$KERNEL_DIR/drivers/block/zram/zram_drv.c" 2>/dev/null | head -1 || true)
-  zram_algo="${zram_algo:-lzo}"
+  zram_algo="${zram_algo:-lz4}"
 
   local mode="$ROOT_LABEL"
   if [ ! -f "$KERNEL_DIR/folksu/Kbuild" ] && [ -f "$KERNEL_DIR/resukisu/Kbuild" ]; then
     mode="ReSukiSU"
   fi
 
-  local cfg_line
-  for cfg_line in \
-    "CONFIG_NOMOUNT| NoMount = $(nomount_version)" \
-    "CONFIG_KSU_HOSTSREDIRECT| Hosts redirect (xxKSU) = true" \
-    "CONFIG_KSU_MULTI_MANAGER_SUPPORT| Multi-manager = true" \
-    "CONFIG_MODULES| Modules = true" \
-    "CONFIG_NET_SCH_FQ| FQ qdisc = true" \
-    "CONFIG_ZRAM_WRITEBACK| ZRAM writeback = true" \
-    "CONFIG_SCHED_MC| Sched MC = true" \
-    "CONFIG_ENCORE_FAS| Encore FAS = true" \
-    "CONFIG_MQ_IOSCHED_ADIOS| ADIOS io-sched = true" \
-    "CONFIG_DYNAMIC_FSYNC| Dynamic Fsync = true" \
-    "CONFIG_BOEFFLA_WL_BLOCKER| Boeffla WL Blocker = true" \
-    "CONFIG_NETFILTER_XT_TARGET_HL| TTL/HL mangling = true"; do
-    if [ "$(cfg "${cfg_line%%|*}")" = "y" ]; then
-      active+="${cfg_line#*|}"$'\n'
-    fi
-  done
+  local root_desc="${mode} $(ksu_version)"
+  if [ "$(cfg CONFIG_NOMOUNT)" = "y" ]; then
+    root_desc="${root_desc} · NoMount $(nomount_version)"
+  fi
 
-  cat <<EOF
- Build mode = ${mode}
- Root = ${mode} $(ksu_version)
- Manual hook = $(bool "$(cfg CONFIG_KSU_MANUAL_HOOK)")
-${active} TCP = ${tcp}
- ZRAM compressor = ${zram_algo}
- Toolchain = ${toolchain}
-EOF
+  local io_sched="mq-deadline"
+  if [ "$(cfg CONFIG_MQ_IOSCHED_ADIOS)" = "y" ]; then io_sched="ADIOS"; fi
+  if [ "$(cfg CONFIG_IOSCHED_BFQ)" = "y" ]; then io_sched="${io_sched} / BFQ"; fi
+  if [ "$(cfg CONFIG_DYNAMIC_FSYNC)" = "y" ]; then io_sched="${io_sched} · Dyn Fsync"; fi
+
+  local net_desc="${tcp}"
+  if [ "$(cfg CONFIG_NET_SCH_FQ_CODEL)" = "y" ]; then net_desc="${net_desc} · FQ-CoDel"; fi
+  if [ "$(cfg CONFIG_NETFILTER_XT_TARGET_HL)" = "y" ]; then net_desc="${net_desc} · TTL 64"; fi
+
+  cat <<EOFFEAT
+• <b>Root & Mask:</b> <code>${root_desc}</code>
+• <b>I/O & Sched:</b> ${io_sched}
+• <b>Network:</b> ${net_desc}
+• <b>Memory:</b> ZRAM (${zram_algo^^}) · Writeback
+• <b>Compiler:</b> <code>${toolchain}</code>
+EOFFEAT
 }
 
 changelog_items() {
@@ -359,10 +353,11 @@ build_start() {
   safe_commit_msg=$(html_escape "$COMMIT_MSG")
   msg="🐾 <b>${BRAND}</b> · <code>${VERSION}</code> · <b>[${BRANCH}]</b>
 ━━━━━━━━━━━━━━━━━━━━
-🔨 <b>Building...</b>
+🔨 <b>Building Kernel...</b>
 🌿 <b>Branch:</b> <code>${BRANCH}</code> (${ANDROID_TARGET})
-<code>${SHA}</code> ${safe_commit_msg}
-<a href='${COMMIT_URL}'>Commit</a> · <a href='${BUILD_URL}'>Build Log</a>"
+💬 <code>${SHA}</code> ${safe_commit_msg}
+
+🔗 <a href='${COMMIT_URL}'>Commit</a> · <a href='${BUILD_URL}'>Build Log</a>"
 
   if [ -n "$PRIMARY" ]; then
     tg_send "$PRIMARY" "$msg" "$TOPIC_CI"
@@ -379,15 +374,14 @@ release_caption() {
   local cl="$1" feat="$2" with_cl_link="$3" zip_base="$4" file_size="$5" sha256="$6"
   if [ -z "$cl" ]; then cl="<i>No changes recorded</i>"; fi
   local out="🐾 <b>New ${BRAND} Release</b>
+━━━━━━━━━━━━━━━━━━━━
+🌿 <b>Branch:</b> <code>${BRANCH}</code> (${ANDROID_TARGET})
+🏷 <b>Tag:</b> <code>${TAG}</code> · <code>${SHA}</code>
 
-<b>Branch:</b> <code>${BRANCH}</code> (${ANDROID_TARGET})
-<b>Commit:</b> <code>${SHA}</code>
-<b>Tag:</b> <code>${TAG}</code>
+⚡ <b>Kernel Highlights:</b>
+${feat}
 
-<b>Features:</b>
-<pre>${feat}</pre>
-
-<b>Change Log:</b>
+📝 <b>Changelog:</b>
 ${cl}"
   if [ "$with_cl_link" = "1" ]; then
     out="${out}
@@ -395,11 +389,8 @@ ${cl}"
   fi
   out="${out}
 
-📦 <code>${zip_base}</code> · ${file_size} · SHA-256 <code>${sha256}…</code>
-
-<b>⬇️ Download</b>
-<a href=\"${DOWNLOAD_URL}\">${DOWNLOAD_LABEL}</a>
-<code>${DOWNLOAD_URL}</code>${DOWNLOAD_NOTE}"
+📦 <code>${zip_base}</code>
+💾 <b>Size:</b> ${file_size} · <b>SHA-256:</b> <code>${sha256}…</code>"
   printf '%s' "$out"
 }
 
@@ -420,11 +411,12 @@ build_success() {
   # 1. primary topic: short success (no zip, no changelog block)
   notif_msg="🐾 <b>${BRAND}</b> · <code>${VERSION}</code> · <b>[${BRANCH}]</b>
 ━━━━━━━━━━━━━━━━━━━━
-✅ <b>Build succeeded</b>
+✅ <b>Build Succeeded</b>
 🌿 <b>Branch:</b> <code>${BRANCH}</code> (${ANDROID_TARGET})
-📦 <code>$(basename "${zip_file:-unknown}")</code>${BUILD_TIME:+ · ⏱ $((BUILD_TIME / 60))m$((BUILD_TIME % 60))s}
-<code>${SHA}</code> ${safe_commit_msg}
-<a href='${COMMIT_URL}'>Commit</a> · <a href='${BUILD_URL}'>Build Log</a> · <a href='${REPO_URL}/blob/${BRANCH}/CHANGELOG.md'>Changelog</a>"
+📦 <code>$(basename "${zip_file:-unknown}")</code>${BUILD_TIME:+ · ⏱ <b>$((BUILD_TIME / 60))m $((BUILD_TIME % 60))s</b>}
+💬 <code>${SHA}</code> ${safe_commit_msg}
+
+🔗 <a href='${COMMIT_URL}'>Commit</a> · <a href='${BUILD_URL}'>Build Log</a> · <a href='${REPO_URL}/blob/${BRANCH}/CHANGELOG.md'>Changelog</a>"
   if [ -n "$PRIMARY" ]; then
     tg_send "$PRIMARY" "$notif_msg" "$TOPIC_CI"
   fi
@@ -479,7 +471,7 @@ build_success() {
     fi
 
     local buttons
-    buttons='{"inline_keyboard":[[{"text":"⬇️ Kernel Zip","url":"'"${DOWNLOAD_URL}"'"},{"text":"🌿 '"${MANAGER_NAME}"'","url":"'"${MANAGER_URL}"'"}],[{"text":"🛡️ NoMount '"$(nomount_version)"'","url":"https://github.com/maxsteeel/nomount/releases"}]]}'
+    buttons='{"inline_keyboard":[[{"text":"⬇️ Download Zip","url":"'"${DOWNLOAD_URL}"'"},{"text":"🌿 '"${MANAGER_NAME}"'","url":"'"${MANAGER_URL}"'"}],[{"text":"🛡️ NoMount '"$(nomount_version)"'","url":"https://github.com/maxsteeel/nomount/releases"},{"text":"📋 Changelog","url":"'"${REPO_URL}/blob/${BRANCH}/CHANGELOG.md"'"}]]}'
     tg_document "$CHANNEL" "$zip_file" "$doc_caption" "$buttons"
   elif [ -n "$CHANNEL" ]; then
     warn "no zip found for release channel (looked in $KERNEL_DIR/dist)"
@@ -517,7 +509,8 @@ build_failed() {
     failed_step="Pipeline step"
   fi
 
-  local safe_error_type safe_failed_step safe_error_context first_error simple_msg
+  local safe_error_type safe_failed_step safe_error_context first_error simple_msg safe_commit_msg
+  safe_commit_msg=$(html_escape "$COMMIT_MSG")
   safe_error_type=$(html_escape "$error_type")
   safe_failed_step=$(html_escape "$failed_step")
   safe_error_context=$(html_escape "$error_context")
@@ -526,10 +519,14 @@ build_failed() {
 
   simple_msg="🐾 <b>${BRAND}</b> · <code>${VERSION}</code> · <b>[${BRANCH}]</b>
 ━━━━━━━━━━━━━━━━━━━━
-🌿 <b>Branch:</b> <code>${BRANCH}</code> (${ANDROID_TARGET})
 ❌ <b>${safe_error_type}</b>
-${first_error:+<code>${first_error}</code>}
-<a href='${BUILD_URL}'>Check Log</a>"
+🌿 <b>Branch:</b> <code>${BRANCH}</code> (${ANDROID_TARGET})
+📍 <b>Step:</b> <code>${safe_failed_step}</code>
+${first_error:+
+⚠️ <b>Error:</b>
+<pre><code>${first_error}</code></pre>
+}
+🔗 <a href='${BUILD_URL}'>Check Build Log</a>"
 
   if [ -n "$PRIMARY" ]; then
     tg_send "$PRIMARY" "$simple_msg" "$TOPIC_CI"
@@ -549,12 +546,15 @@ ${first_error:+<code>${first_error}</code>}
   fi
 
   if [ -n "$ERROR_CHANNEL" ]; then
-    local detail_msg="🐾 <b>${BRAND}</b> · <code>${VERSION}</code> · <b>[${BRANCH}]</b>
+    local detail_msg="🐾 <b>${BRAND} · Build Failed</b>
+━━━━━━━━━━━━━━━━━━━━
 🌿 <b>Branch:</b> <code>${BRANCH}</code> (${ANDROID_TARGET})
-<b>${safe_error_type}</b> · ${safe_failed_step}
+❌ <b>${safe_error_type}</b> · <code>${safe_failed_step}</code>
+💬 <code>${SHA}</code> ${safe_commit_msg}
 
 <pre><code>${safe_error_context}</code></pre>
-<a href='${BUILD_URL}'>Full Log</a>"
+
+🔗 <a href='${BUILD_URL}'>Full Build Log</a>"
     tg_send "$ERROR_CHANNEL" "$detail_msg"
   fi
 }
