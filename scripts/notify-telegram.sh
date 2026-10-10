@@ -60,6 +60,17 @@ KERNEL_DIR="${KCK_KERNEL_DIR:-.}"
 BRAND="${KCK_BRAND:-PawwwNunungggg}"
 SERVER="${GITHUB_SERVER_URL:-https://github.com}"
 
+# ---- branding ---------------------------------------------------------------
+# Root solution label used in the feature block, and the manager release page
+# linked from the release-channel buttons. Override in the consumer workflow
+# when the manager moves or a uapi6/pre6 build lands:
+#   KCK_ROOT_LABEL=xxKSU
+#   KCK_MANAGER_NAME="xxKSU Manager"
+#   KCK_MANAGER_URL=https://github.com/<owner>/<repo>/releases
+ROOT_LABEL="${KCK_ROOT_LABEL:-xxKSU}"
+MANAGER_NAME="${KCK_MANAGER_NAME:-xxKSU Manager}"
+MANAGER_URL="${KCK_MANAGER_URL:-https://github.com/backslashxx/KernelSU/releases}"
+
 # ---- context ----------------------------------------------------------------
 BRANCH="${KCK_SOURCE_BRANCH:-${GITHUB_REF_NAME:-unknown}}"
 ANDROID_TARGET="AOSP"
@@ -90,9 +101,21 @@ BUILD_TIME="${KCK_BUILD_SECONDS:-}"
 
 BUILD_URL="$SERVER/${GITHUB_REPOSITORY:-local/local}/actions/runs/${GITHUB_RUN_ID:-0}"
 REPO_URL="$SERVER/${KCK_SOURCE_REPO:-${GITHUB_REPOSITORY:-local/local}}"
+COMMIT_URL="$REPO_URL/commit/${SHA}"
+
+# Nightly artifacts live on the Actions run page (GitHub gates artifact
+# downloads behind a login, and branch builds create no Release), so that is
+# what "Download" points at. Label and note are set from the branch vs tag case
+# so the message never implies a direct file link.
 DOWNLOAD_URL="$BUILD_URL"
+DOWNLOAD_LABEL="⬇️ Open Actions run"
+DOWNLOAD_NOTE="<i>(butuh login GitHub)</i>"
 case "${GITHUB_REF:-}" in
-  refs/tags/*) DOWNLOAD_URL="$SERVER/${GITHUB_REPOSITORY:-local/local}/releases/tag/${GITHUB_REF_NAME}" ;;
+  refs/tags/*)
+    DOWNLOAD_URL="$SERVER/${GITHUB_REPOSITORY:-local/local}/releases/tag/${GITHUB_REF_NAME}"
+    DOWNLOAD_LABEL="⬇️ Download from Releases"
+    DOWNLOAD_NOTE=""
+    ;;
 esac
 
 RC=0
@@ -250,7 +273,7 @@ build_features() {
     "$KERNEL_DIR/drivers/block/zram/zram_drv.c" 2>/dev/null | head -1 || true)
   zram_algo="${zram_algo:-lzo}"
 
-  local mode="FolkSU"
+  local mode="$ROOT_LABEL"
   if [ ! -f "$KERNEL_DIR/folksu/Kbuild" ] && [ -f "$KERNEL_DIR/resukisu/Kbuild" ]; then
     mode="ReSukiSU"
   fi
@@ -303,7 +326,7 @@ build_start() {
 🔨 <b>Building...</b>
 🌿 <b>Branch:</b> <code>${BRANCH}</code> (${ANDROID_TARGET})
 <code>${SHA}</code> ${safe_commit_msg}
-<a href='${BUILD_URL}'>Build Log</a>"
+<a href='${COMMIT_URL}'>Commit</a> · <a href='${BUILD_URL}'>Build Log</a>"
 
   if [ -n "$PRIMARY" ]; then
     tg_send "$PRIMARY" "$msg" "$TOPIC_CI"
@@ -336,8 +359,11 @@ ${cl}"
   fi
   out="${out}
 
-<b>Download:</b> <a href=\"${DOWNLOAD_URL}\">Click Here</a>
-📦 <code>${zip_base}</code> · ${file_size} · SHA-256 <code>${sha256}…</code>"
+📦 <code>${zip_base}</code> · ${file_size} · SHA-256 <code>${sha256}…</code>
+
+<b>⬇️ Download</b>
+<a href=\"${DOWNLOAD_URL}\">${DOWNLOAD_LABEL}</a>
+<code>${DOWNLOAD_URL}</code>${DOWNLOAD_NOTE}"
   printf '%s' "$out"
 }
 
@@ -362,7 +388,7 @@ build_success() {
 🌿 <b>Branch:</b> <code>${BRANCH}</code> (${ANDROID_TARGET})
 📦 <code>$(basename "${zip_file:-unknown}")</code>${BUILD_TIME:+ · ⏱ $((BUILD_TIME / 60))m$((BUILD_TIME % 60))s}
 <code>${SHA}</code> ${safe_commit_msg}
-<a href='${BUILD_URL}'>Build Log</a> · <a href='${REPO_URL}/blob/${BRANCH}/CHANGELOG.md'>Changelog</a>"
+<a href='${COMMIT_URL}'>Commit</a> · <a href='${BUILD_URL}'>Build Log</a> · <a href='${REPO_URL}/blob/${BRANCH}/CHANGELOG.md'>Changelog</a>"
   if [ -n "$PRIMARY" ]; then
     tg_send "$PRIMARY" "$notif_msg" "$TOPIC_CI"
   fi
@@ -416,7 +442,8 @@ build_success() {
       warn "caption ${#doc_caption} chars still exceeds Telegram 1024 limit"
     fi
 
-    local buttons='{"inline_keyboard":[[{"text":"⬇️ Kernel Zip","url":"'"${DOWNLOAD_URL}"'"},{"text":"🌿 FolkSU Manager","url":"https://github.com/LyraVoid/FolkSU/releases"}],[{"text":"🛡️ NoMount '"$(nomount_version)"'","url":"https://github.com/maxsteeel/nomount/releases"}]]}'
+    local buttons
+    buttons='{"inline_keyboard":[[{"text":"⬇️ Kernel Zip","url":"'"${DOWNLOAD_URL}"'"},{"text":"🌿 '"${MANAGER_NAME}"'","url":"'"${MANAGER_URL}"'"}],[{"text":"🛡️ NoMount '"$(nomount_version)"'","url":"https://github.com/maxsteeel/nomount/releases"}]]}'
     tg_document "$CHANNEL" "$zip_file" "$doc_caption" "$buttons"
   elif [ -n "$CHANNEL" ]; then
     warn "no zip found for release channel (looked in $KERNEL_DIR/dist)"
