@@ -250,8 +250,18 @@ strip_kbuild_value() {
 }
 
 ksu_version() {
-  local tag="v0.1.0-pre6" val code=""
-  if [ -f "$KERNEL_DIR/folksu/Kbuild" ]; then
+  local tag="" val code=""
+  if [ -f "$KERNEL_DIR/drivers/kernelsu/Makefile" ]; then
+    code=$(sed -n 's/.*-DKSU_VERSION=\([0-9]*\).*/\1/p' "$KERNEL_DIR/drivers/kernelsu/Makefile" | head -1)
+    if [ -f "$KERNEL_DIR/drivers/kernelsu/VERSION" ]; then
+      tag=$(tr -d ' \n\r' < "$KERNEL_DIR/drivers/kernelsu/VERSION")
+    else
+      tag=$(sed -n 's/^KSU_TAG_NAME *:= *//p' "$KERNEL_DIR/drivers/kernelsu/Makefile" | head -1)
+      tag=$(strip_kbuild_value "$tag")
+    fi
+    tag="${tag:-v3.3.0-70}"
+  elif [ -f "$KERNEL_DIR/folksu/Kbuild" ]; then
+    tag="v0.1.0-pre6"
     val=$(sed -n 's/^KSU_TAG_NAME *:= *//p' "$KERNEL_DIR/folksu/Kbuild" | head -1)
     val=$(strip_kbuild_value "$val")
     if [ -n "$val" ]; then tag="$val"; fi
@@ -261,6 +271,7 @@ ksu_version() {
       code=$((30000 + local_v))
     fi
   elif [ -f "$KERNEL_DIR/resukisu/Kbuild" ]; then
+    tag="v0.1.0"
     val=$(sed -n 's/^KSU_TAG_NAME *:= *//p' "$KERNEL_DIR/resukisu/Kbuild" | head -1)
     val=$(strip_kbuild_value "$val")
     if [ -n "$val" ]; then tag="$val"; fi
@@ -270,6 +281,7 @@ ksu_version() {
       code=$((30000 + local_v + 700))
     fi
   fi
+  tag="${tag:-unknown}"
   if [ -n "$code" ]; then
     printf '%s (%s)' "$tag" "$code"
   else
@@ -312,6 +324,10 @@ build_features() {
   local mode="$ROOT_LABEL"
   if [ ! -f "$KERNEL_DIR/folksu/Kbuild" ] && [ -f "$KERNEL_DIR/resukisu/Kbuild" ]; then
     mode="ReSukiSU"
+  elif [ -f "$KERNEL_DIR/folksu/Kbuild" ]; then
+    mode="FolkSU"
+  elif [ -d "$KERNEL_DIR/drivers/kernelsu" ]; then
+    mode="xxKSU"
   fi
 
   local root_desc="${mode} $(ksu_version)"
