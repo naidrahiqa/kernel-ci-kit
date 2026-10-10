@@ -127,6 +127,24 @@ if ! run_make "$DEFCONFIG"; then
   die "defconfig failed"
 fi
 
+if [ -n "${CONFIG_OVERRIDES:-}" ]; then
+  log "applying config overrides: $CONFIG_OVERRIDES"
+  for kv in $CONFIG_OVERRIDES; do
+    k=${kv%%=*}; v=${kv#*=}
+    case $v in
+      y) scripts/config --file "$OUT_DIR/.config" -e "$k" ;;
+      n) scripts/config --file "$OUT_DIR/.config" -d "$k" ;;
+      m) scripts/config --file "$OUT_DIR/.config" -m "$k" ;;
+      *) scripts/config --file "$OUT_DIR/.config" --set-val "$k" "$v" ;;
+    esac
+  done
+  log "re-running olddefconfig"
+  if ! run_make olddefconfig; then
+    report_build_error
+    die "olddefconfig failed after config overrides"
+  fi
+fi
+
 log "building with -j$JOBS ..."
 START_TS="$(date +%s)"
 if ! run_make; then

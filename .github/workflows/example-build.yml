@@ -38,6 +38,10 @@ on:
         description: 'Zip name template'
         required: false
         default: 'PawwwNunungggg-{toolchain}-{hash}-{date}-{version}'
+      config_overrides:
+        description: 'Space-separated CONFIG=VALUE overrides after defconfig (e.g. "CONFIG_NOMOUT=n")'
+        required: false
+        default: ''
   # Cross-repo trigger: a consumer repo's own workflow can call this one
   # (its `on.push` lives in THAT repo — a workflow never reacts to another
   # repository's events). See kernel/.github/workflows/build.yml.
@@ -83,6 +87,11 @@ on:
         type: string
         required: false
         default: 'PawwwNunungggg-{toolchain}-{hash}-{date}-{version}'
+      config_overrides:
+        description: 'Space-separated CONFIG=VALUE overrides after defconfig (e.g. "CONFIG_NOMOUT=n")'
+        type: string
+        required: false
+        default: ''
   push:
     tags: ['v*']
 
@@ -140,6 +149,7 @@ jobs:
           toolchain: ${{ inputs.toolchain || 'greenforce-clang' }}
           extra_make_args: ${{ inputs.extra_make_args || 'LLVM=1 LLVM_IAS=1' }}
           zip_name_template: ${{ inputs.zip_name_template || 'PawwwNunungggg-{toolchain}-{hash}-{date}-{version}' }}
+          config_overrides: ${{ inputs.config_overrides || '' }}
           kernel_path: kernel
 
       - name: Notify success

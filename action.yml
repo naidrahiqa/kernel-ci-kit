@@ -57,6 +57,9 @@ inputs:
   zip_name_template:
     description: 'Zip name template. Placeholders: {device} {version} {toolchain} {date}.'
     default: 'PawwwNunungggg-{toolchain}-{hash}-{date}-{version}'
+  config_overrides:
+    description: 'Space-separated CONFIG=VALUE overrides applied after defconfig (e.g. "CONFIG_NOMOUNT=n CONFIG_KSU_MANUAL_HOOK=y").'
+    default: ''
   upload_artifact:
     description: 'Upload the zip as a workflow artifact (true/false).'
     default: 'true'
@@ -174,6 +177,7 @@ runs:
         TOOLCHAIN: ${{ inputs.toolchain }}
         TOOLCHAIN_URL: ${{ inputs.toolchain_url }}
         TOOLCHAIN_SHA256: ${{ inputs.toolchain_sha256 }}
+        CONFIG_OVERRIDES: ${{ inputs.config_overrides }}
 
     - name: Upload build log (failure only)
       if: failure()
