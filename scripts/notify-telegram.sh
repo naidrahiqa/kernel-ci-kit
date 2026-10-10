@@ -319,6 +319,7 @@ build_features() {
   local net_desc="${tcp}"
   if [ "$(cfg CONFIG_NET_SCH_FQ_CODEL)" = "y" ]; then net_desc="${net_desc} · FQ-CoDel"; fi
   if [ "$(cfg CONFIG_NETFILTER_XT_TARGET_HL)" = "y" ]; then net_desc="${net_desc} · TTL 64"; fi
+  if [ "$(cfg CONFIG_BPF_JIT)" = "y" ]; then net_desc="${net_desc} · BPF JIT"; fi
 
   cat <<EOFFEAT
 • <b>Root & Mask:</b> <code>${root_desc}</code>
