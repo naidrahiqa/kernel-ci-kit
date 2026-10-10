@@ -92,11 +92,6 @@ on:
         type: string
         required: false
         default: ''
-  push:
-    tags: ['v*']
-
-permissions:
-  contents: write
 
 # group includes the repository: caller runs and kit-internal runs must not
 # cancel each other. Pushes cancel their own in-flight build (only the newest
