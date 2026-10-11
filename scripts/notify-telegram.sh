@@ -12,7 +12,8 @@
 #   success -> primary topic (short) + release channel (zip document)
 #   failed  -> primary topic (summary) + log topic (tail) + error channel
 #   custom  -> primary topic only (caller-supplied HTML, e.g. ReSukiSU
-#              check/updater notices); raw HTML, not escaped
+#              check/updater notices); raw HTML, not escaped.
+#              KCK_CUSTOM_ALL=1 also posts to the release channel.
 #
 # Destination env (consumer repo secrets; workflow may hardcode topic ids):
 #   TELEGRAM_BOT_TOKEN        required — auto-skip (exit 0) when missing
@@ -552,13 +553,30 @@ ${first_error:+
   fi
 }
 
-# build_custom <html> — caller-built message to the primary topic only.
-# Used by the ReSukiSU check/updater workflows, which have their own wording.
+# build_custom <html> — caller-built message.
+# Default: primary topic only (ReSukiSU check/updater notices keep that noise
+# out of the release channel). KCK_CUSTOM_ALL=1 fans the same message out to
+# the primary topic AND the release channel — used by the multibuild pipeline,
+# whose releases are published as a text link (4 zip assets, no single zip to
+# attach).
 build_custom() {
   local text="${1:-}"
   if [ -z "$text" ]; then
     warn "custom: empty message"
     RC=1
+    return 0
+  fi
+  if [ "${KCK_CUSTOM_ALL:-0}" = "1" ]; then
+    if [ -n "$PRIMARY" ]; then
+      tg_send "$PRIMARY" "$text" "$TOPIC_CI"
+    fi
+    if [ -n "$CHANNEL" ]; then
+      tg_send "$CHANNEL" "$text"
+    fi
+    if [ -z "$PRIMARY" ] && [ -z "$CHANNEL" ]; then
+      warn "custom: no destination configured"
+      RC=1
+    fi
     return 0
   fi
   if [ -n "$PRIMARY" ]; then
