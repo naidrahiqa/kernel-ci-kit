@@ -44,7 +44,8 @@ on:
         default: ''
   # Cross-repo trigger: a consumer repo's own workflow can call this one
   # (its `on.push` lives in THAT repo — a workflow never reacts to another
-  # repository's events). See kernel/.github/workflows/build.yml.
+  # repository's events). The kernel repo no longer ships a wrapper; call
+  # this workflow directly via `workflow_dispatch` instead.
   workflow_call:
     inputs:
       kit_repo:
