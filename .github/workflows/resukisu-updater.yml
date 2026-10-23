@@ -12,8 +12,11 @@ name: ReSukiSU Updater
 # GITHUB_TOKEN of this repo cannot push to the kernel repo.
 
 on:
-  schedule:
-    - cron: '30 2 * * 1' # Senin 02:30 UTC = 09:30 WIB, setelah check
+  # Cron paused 23 Okt 2026: like resukisu-check, the target tree no longer
+  # carries the in-tree resukisu pin, so the scheduled updater has nothing
+  # to sync. Manual dispatch still works for trees that carry it.
+  # schedule:
+  #   - cron: '30 2 * * 1' # Senin 02:30 UTC = 09:30 WIB, setelah check
   workflow_dispatch:
     inputs:
       kernel_repo:
@@ -23,7 +26,7 @@ on:
       kernel_ref:
         description: 'Kernel source branch (PR base)'
         required: true
-        default: 'PawwwNunungggg24.0'
+        default: 'EsTehAnget24.0'
 
 permissions:
   contents: read
@@ -44,7 +47,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: ${{ inputs.kernel_repo || 'naidrahiqa/android_kernel_xiaomi_mt6768-k419' }}
-          ref: ${{ inputs.kernel_ref || 'PawwwNunungggg24.0' }}
+          ref: ${{ inputs.kernel_ref || 'EsTehAnget24.0' }}
           path: kernel
           # Full history: `git apply -3` resolves pre-image blobs from the
           # object database, and the pinned upstream content lives there.
@@ -76,7 +79,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.KERNEL_REPO_TOKEN }}
           KERNEL_REPO: ${{ inputs.kernel_repo || 'naidrahiqa/android_kernel_xiaomi_mt6768-k419' }}
-          KERNEL_REF: ${{ inputs.kernel_ref || 'PawwwNunungggg24.0' }}
+          KERNEL_REF: ${{ inputs.kernel_ref || 'EsTehAnget24.0' }}
           NEW_SHA: ${{ steps.sync.outputs.new_sha }}
           NEW_TAG: ${{ steps.sync.outputs.new_tag }}
           NEW_VERSION: ${{ steps.sync.outputs.new_version }}
@@ -159,7 +162,7 @@ jobs:
           TELEGRAM_ERROR_CHANNEL_ID: ${{ secrets.TELEGRAM_ERROR_CHANNEL_ID || '-1003945405514' }}
           KCK_KERNEL_DIR: kernel
           KCK_SOURCE_REPO: ${{ inputs.kernel_repo || 'naidrahiqa/android_kernel_xiaomi_mt6768-k419' }}
-          KCK_SOURCE_BRANCH: ${{ inputs.kernel_ref || 'PawwwNunungggg24.0' }}
+          KCK_SOURCE_BRANCH: ${{ inputs.kernel_ref || 'EsTehAnget24.0' }}
           KCK_SOURCE_SHA: ${{ github.sha }}
           SYNC_LOG: ${{ runner.temp }}/resukisu-sync.log
         run: |

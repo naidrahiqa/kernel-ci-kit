@@ -7,8 +7,11 @@ name: ReSukiSU Upstream Check
 # produce a Telegram message in the primary CI topic.
 
 on:
-  schedule:
-    - cron: '0 2 * * 1' # Senin 02:00 UTC = 09:00 WIB
+  # Cron paused 23 Okt 2026: the EsTehAnget24.0 baseline does not carry
+  # scripts/check-resukisu.sh yet, so a scheduled run would only spam the
+  # CI topic with failures. Re-enable once the script lands in-tree.
+  # schedule:
+  #   - cron: '0 2 * * 1' # Senin 02:00 UTC = 09:00 WIB
   workflow_dispatch:
 
 permissions:
@@ -30,7 +33,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: naidrahiqa/android_kernel_xiaomi_mt6768-k419
-          ref: PawwwNunungggg24.0
+          ref: EsTehAnget24.0
           path: kernel
           fetch-depth: 1
 
