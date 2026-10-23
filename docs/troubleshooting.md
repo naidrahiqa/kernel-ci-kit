@@ -89,7 +89,7 @@ Always run with source-path resolution:
 You referenced an action output that doesn't exist — see
 [inputs-reference.md](inputs-reference.md) for the authoritative list
 (`zip_path`, `zip_name`, `image_path`, `kernel_version`, `build_seconds`,
-`ccache_hit_rate`).
+`ccache_hit_rate`, `root_desc`).
 
 ### Telegram messages not arriving
 - Secrets must exist in the **consumer** repo, not in kernel-ci-kit.
