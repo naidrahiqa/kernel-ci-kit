@@ -192,6 +192,7 @@ jobs:
             ${{ steps.kck.outputs.zip_path }}.sha256
           body: |
             **Kernel:** ${{ steps.kck.outputs.kernel_version }}
+            **Root:** ${{ steps.kck.outputs.root_desc }}
             **Build:** ${{ steps.kck.outputs.build_seconds }}s · ccache ${{ steps.kck.outputs.ccache_hit_rate }}%
             **Source:** ${{ inputs.kernel_repo || 'naidrahiqa/android_kernel_xiaomi_mt6768-k419' }} @ ${{ inputs.kernel_ref || 'EsTehAnget24.0' }} (`${{ steps.kernel.outputs.commit }}`)
             **Toolchain:** ${{ inputs.toolchain || 'greenforce-clang' }} · defconfig `${{ inputs.defconfig || 'selene_defconfig' }}`
