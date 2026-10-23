@@ -66,13 +66,13 @@ SERVER="${GITHUB_SERVER_URL:-https://github.com}"
 # ---- branding ---------------------------------------------------------------
 # Root solution label used in the feature block, and the manager release page
 # linked from the release-channel buttons. Override in the consumer workflow
-# when the manager moves or a uapi6/pre6 build lands:
+# when the manager moves or a different root driver is in play:
 #   KCK_ROOT_LABEL=xxKSU
 #   KCK_MANAGER_NAME="xxKSU Manager"
 #   KCK_MANAGER_URL=https://github.com/<owner>/<repo>/releases
-ROOT_LABEL="${KCK_ROOT_LABEL:-xxKSU}"
-MANAGER_NAME="${KCK_MANAGER_NAME:-xxKSU Manager}"
-MANAGER_URL="${KCK_MANAGER_URL:-https://github.com/backslashxx/KernelSU/releases}"
+ROOT_LABEL="${KCK_ROOT_LABEL:-BakaSU}"
+MANAGER_NAME="${KCK_MANAGER_NAME:-BakaSU Manager}"
+MANAGER_URL="${KCK_MANAGER_URL:-https://github.com/Baka-SU/BakaSU/releases}"
 
 # ---- context ----------------------------------------------------------------
 BRANCH="${KCK_SOURCE_BRANCH:-${GITHUB_REF_NAME:-unknown}}"
@@ -244,6 +244,19 @@ strip_kbuild_value() {
 
 ksu_version() {
   local tag="" code=""
+  # In-tree BakaSU (drivers/bakasu): static KSU_VERSION pin in the Kbuild plus
+  # a hand-tracked rev-count file — the tree builds without upstream .git, so
+  # nothing here is auto-derived.
+  if [ -f "$KERNEL_DIR/drivers/bakasu/Kbuild" ]; then
+    code=$(sed -n 's/^KSU_VERSION *:= *\([0-9]*\).*/\1/p' "$KERNEL_DIR/drivers/bakasu/Kbuild" | head -1)
+    if [ -f "$KERNEL_DIR/drivers/bakasu/BAKASU_REV_COUNT" ]; then
+      tag="rev $(tr -d ' \n\r' < "$KERNEL_DIR/drivers/bakasu/BAKASU_REV_COUNT")"
+    fi
+    if [ -n "$code" ]; then
+      printf '%s (%s)' "${tag:-BakaSU}" "$code"
+      return 0
+    fi
+  fi
   if [ -f "$KERNEL_DIR/drivers/kernelsu/Makefile" ]; then
     code=$(sed -n 's/.*-DKSU_VERSION=\([0-9]*\).*/\1/p' "$KERNEL_DIR/drivers/kernelsu/Makefile" | head -1)
     if [ -f "$KERNEL_DIR/drivers/kernelsu/VERSION" ]; then
@@ -294,8 +307,10 @@ build_features() {
     "$KERNEL_DIR/drivers/block/zram/zram_drv.c" 2>/dev/null | head -1 || true)
   zram_algo="${zram_algo:-lz4}"
 
-  local mode="${ROOT_LABEL:-xxKSU}"
-  if [ -d "$KERNEL_DIR/drivers/kernelsu" ]; then
+  local mode="${ROOT_LABEL:-BakaSU}"
+  if [ -d "$KERNEL_DIR/drivers/bakasu" ]; then
+    mode="BakaSU"
+  elif [ -d "$KERNEL_DIR/drivers/kernelsu" ]; then
     mode="xxKSU"
   fi
 
