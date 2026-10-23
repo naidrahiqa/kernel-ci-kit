@@ -178,13 +178,16 @@ case "${TOOLCHAIN:-}" in
 esac
 SAFE_TOOLCHAIN="$PRETTY_TOOLCHAIN"
 
+# The zip name must carry the KERNEL commit, not the workflow repo's commit:
+# on workflow_dispatch Actions sets GITHUB_SHA to the ci-kit head, which would
+# label zips with tooling history instead of kernel history. KCK_SOURCE_SHA
+# is wired from the kernel checkout step; fall back to querying the kernel
+# tree directly for local/standalone runs.
 GIT_HASH=""
-if [ -n "${GITHUB_SHA:-}" ]; then
-  GIT_HASH="${GITHUB_SHA:0:7}"
-elif [ -n "${KCK_SOURCE_SHA:-}" ]; then
+if [ -n "${KCK_SOURCE_SHA:-}" ]; then
   GIT_HASH="${KCK_SOURCE_SHA:0:7}"
 else
-  GIT_HASH="$(git -C "${KERNEL_PATH:-.}" rev-parse --short=7 HEAD 2>/dev/null || git rev-parse --short=7 HEAD 2>/dev/null || echo "unknown")"
+  GIT_HASH="$(git -C "${KERNEL_PATH:-.}" rev-parse --short=7 HEAD 2>/dev/null || echo "unknown")"
 fi
 
 RUN_NUM="${GITHUB_RUN_NUMBER:-1}"
