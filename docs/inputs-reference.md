@@ -35,6 +35,7 @@ read when run outside CI. All inputs are strings (GitHub Actions input type).
 | `kernel_version` | `make -s kernelrelease` | `4.19.325-...` |
 | `build_seconds` | wall clock of the compile step | `1842` |
 | `ccache_hit_rate` | `ccache --print-stats` math | `87.5` or `n/a` |
+| `root_desc` | KernelSU variant + version parsed from the tree (BakaSU pin / KernelSU dirs, plus NoMount when `CONFIG_NOMOUNT=y`) | `BakaSU rev 4536 (35229) · NoMount v2.2.0`, or `none` |
 
 ## presets/toolchains.yml fields
 
