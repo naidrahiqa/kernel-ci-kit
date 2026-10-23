@@ -285,6 +285,8 @@ nomount_version() {
     fi
     if [ "$nm_raw" = "21" ]; then
       ver="v2.1.0"
+    elif [ "$nm_raw" = "22" ]; then
+      ver="v2.2.0"
     elif [ "$nm_raw" = "20" ]; then
       ver="v2.0.0"
     elif [ -n "$nm_raw" ]; then
