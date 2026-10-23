@@ -7,9 +7,11 @@
 #   notify-telegram.sh failed  [error_log]
 #   notify-telegram.sh custom  "<html>"
 #
-# Routing (same as the classic PawwwNunungggg CI notifier):
-#   start   -> primary topic + release channel (text)
-#   success -> primary topic (short) + release channel (zip document)
+# Routing (start/success moved to the release channel 23 Okt 2026):
+#   start   -> release channel (text); falls back to primary topic when no
+#              channel is configured
+#   success -> release channel (short text + zip document); short text falls
+#              back to primary topic when no channel is configured
 #   failed  -> primary topic (summary) + log topic (tail) + error channel
 #   custom  -> primary topic only (caller-supplied HTML, e.g. ReSukiSU
 #              check/updater notices); raw HTML, not escaped.
@@ -344,11 +346,10 @@ build_start() {
 
 🔗 <a href='${COMMIT_URL}'>Commit</a> · <a href='${BUILD_URL}'>Build Log</a>"
 
-  if [ -n "$PRIMARY" ]; then
-    tg_send "$PRIMARY" "$msg" "$TOPIC_CI"
-  fi
   if [ -n "$CHANNEL" ]; then
     tg_send "$CHANNEL" "$msg"
+  elif [ -n "$PRIMARY" ]; then
+    tg_send "$PRIMARY" "$msg" "$TOPIC_CI"
   fi
 }
 
@@ -402,7 +403,10 @@ build_success() {
 💬 <code>${SHA}</code> ${safe_commit_msg}
 
 🔗 <a href='${COMMIT_URL}'>Commit</a> · <a href='${BUILD_URL}'>Build Log</a> · <a href='${REPO_URL}/blob/${BRANCH}/CHANGELOG.md'>Changelog</a>"
-  if [ -n "$PRIMARY" ]; then
+  # 1. release channel: short success text (zip document follows below)
+  if [ -n "$CHANNEL" ]; then
+    tg_send "$CHANNEL" "$notif_msg"
+  elif [ -n "$PRIMARY" ]; then
     tg_send "$PRIMARY" "$notif_msg" "$TOPIC_CI"
   fi
 
