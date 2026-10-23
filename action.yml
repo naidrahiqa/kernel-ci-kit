@@ -83,6 +83,9 @@ outputs:
   ccache_hit_rate:
     description: 'ccache hit rate % for this build (n/a when ccache is off).'
     value: ${{ steps.build.outputs.ccache_hit_rate }}
+  root_desc:
+    description: 'Root implementation summary, e.g. "BakaSU rev 4536 (35229) · NoMount v2.2.0"; "none" if the tree has no KernelSU.'
+    value: ${{ steps.build.outputs.root_desc }}
 
 runs:
   using: 'composite'
