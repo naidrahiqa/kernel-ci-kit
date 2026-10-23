@@ -116,6 +116,7 @@ jobs:
           path: kit
 
       - name: Checkout kernel source
+        id: kernel
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: ${{ inputs.kernel_repo || 'naidrahiqa/android_kernel_xiaomi_mt6768-k419' }}
@@ -134,7 +135,7 @@ jobs:
           KCK_KERNEL_DIR: kernel
           KCK_SOURCE_REPO: ${{ inputs.kernel_repo || 'naidrahiqa/android_kernel_xiaomi_mt6768-k419' }}
           KCK_SOURCE_BRANCH: ${{ inputs.kernel_ref || 'EsTehAnget24.0' }}
-          KCK_SOURCE_SHA: ${{ github.sha }}
+          KCK_SOURCE_SHA: ${{ steps.kernel.outputs.commit }}
 
       - name: Build with kernel-ci-kit
         id: kck
@@ -160,7 +161,7 @@ jobs:
           KCK_KERNEL_DIR: kernel
           KCK_SOURCE_REPO: ${{ inputs.kernel_repo || 'naidrahiqa/android_kernel_xiaomi_mt6768-k419' }}
           KCK_SOURCE_BRANCH: ${{ inputs.kernel_ref || 'EsTehAnget24.0' }}
-          KCK_SOURCE_SHA: ${{ github.sha }}
+          KCK_SOURCE_SHA: ${{ steps.kernel.outputs.commit }}
           KCK_TOOLCHAIN: ${{ inputs.toolchain || 'greenforce-clang' }}
           KCK_BUILD_SECONDS: ${{ steps.kck.outputs.build_seconds }}
 
@@ -176,18 +177,21 @@ jobs:
           KCK_KERNEL_DIR: kernel
           KCK_SOURCE_REPO: ${{ inputs.kernel_repo || 'naidrahiqa/android_kernel_xiaomi_mt6768-k419' }}
           KCK_SOURCE_BRANCH: ${{ inputs.kernel_ref || 'EsTehAnget24.0' }}
-          KCK_SOURCE_SHA: ${{ github.sha }}
+          KCK_SOURCE_SHA: ${{ steps.kernel.outputs.commit }}
           KCK_TOOLCHAIN: ${{ inputs.toolchain || 'greenforce-clang' }}
 
-      - name: Attach zip to GitHub Release (tag v*)
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Publish zip to naidrahiqa/selene-releases
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
+          token: ${{ secrets.KERNEL_REPO_TOKEN }}
+          repository: naidrahiqa/selene-releases
+          tag_name: r${{ github.run_number }}
+          name: selene kernel r${{ github.run_number }}
           files: |
             ${{ steps.kck.outputs.zip_path }}
             ${{ steps.kck.outputs.zip_path }}.sha256
-          generate_release_notes: true
           body: |
             **Kernel:** ${{ steps.kck.outputs.kernel_version }}
             **Build:** ${{ steps.kck.outputs.build_seconds }}s · ccache ${{ steps.kck.outputs.ccache_hit_rate }}%
-            **Source:** ${{ inputs.kernel_repo || 'naidrahiqa/android_kernel_xiaomi_mt6768-k419' }} @ ${{ inputs.kernel_ref || 'EsTehAnget24.0' }}
+            **Source:** ${{ inputs.kernel_repo || 'naidrahiqa/android_kernel_xiaomi_mt6768-k419' }} @ ${{ inputs.kernel_ref || 'EsTehAnget24.0' }} (`${{ steps.kernel.outputs.commit }}`)
+            **Toolchain:** ${{ inputs.toolchain || 'greenforce-clang' }} · defconfig `${{ inputs.defconfig || 'selene_defconfig' }}`
