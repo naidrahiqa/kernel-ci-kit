@@ -195,12 +195,91 @@ else
   HIT_RATE="n/a"
 fi
 
+# ---- root info -------------------------------------------------------------
+# Release notes want the KernelSU variant + version. This mirrors the
+# ksu_version()/nomount_version() parsing in notify-telegram.sh (same sed
+# targets; keep them in sync). The tree builds without upstream .git, so all
+# versions come from hand-tracked pins, never git describe.
+strip_kbuild_value() {
+  printf '%s' "$1" | sed 's/\$(shell .*)//; s/^ *//; s/ *$//'
+}
+
+root_version() {
+  if ! [ -d drivers/bakasu ] && ! [ -d drivers/kernelsu ]; then
+    printf 'none'
+    return 0
+  fi
+  local tag="" code=""
+  # In-tree BakaSU (drivers/bakasu): static KSU_VERSION pin in the Kbuild plus
+  # a hand-tracked rev-count file.
+  if [ -f drivers/bakasu/Kbuild ]; then
+    code=$(sed -n 's/^KSU_VERSION *:= *\([0-9]*\).*/\1/p' drivers/bakasu/Kbuild | head -1)
+    if [ -f drivers/bakasu/BAKASU_REV_COUNT ]; then
+      tag="rev $(tr -d ' \n\r' < drivers/bakasu/BAKASU_REV_COUNT)"
+    fi
+    if [ -n "$code" ]; then
+      printf '%s (%s)' "${tag:-BakaSU}" "$code"
+      return 0
+    fi
+  fi
+  # Upstream-flavoured KernelSU (drivers/kernelsu).
+  if [ -f drivers/kernelsu/Makefile ]; then
+    code=$(sed -n 's/.*-DKSU_VERSION=\([0-9]*\).*/\1/p' drivers/kernelsu/Makefile | head -1)
+    if [ -f drivers/kernelsu/VERSION ]; then
+      tag=$(tr -d ' \n\r' < drivers/kernelsu/VERSION)
+    else
+      tag=$(sed -n 's/^KSU_TAG_NAME *:= *//p' drivers/kernelsu/Makefile | head -1)
+      tag=$(strip_kbuild_value "$tag")
+    fi
+    tag="${tag:-v3.3.0-70}"
+  fi
+  tag="${tag:-v3.3.0-70}"
+  if [ -n "$code" ]; then
+    printf '%s (%s)' "$tag" "$code"
+  else
+    printf '%s' "$tag"
+  fi
+}
+
+nomount_version() {
+  local ver="v2.1.0"
+  if [ -f fs/nomount.h ]; then
+    local nm_raw
+    nm_raw=$(sed -n 's/#define NOMOUNT_BASE_VERSION "\([^"]*\)".*/\1/p' fs/nomount.h 2>/dev/null | head -1)
+    [ -z "$nm_raw" ] && nm_raw=$(sed -n 's/#define NOMOUNT_VERSION "\([^"]*\)".*/\1/p' fs/nomount.h 2>/dev/null | head -1)
+    if [ "$nm_raw" = "21" ]; then
+      ver="v2.1.0"
+    elif [ "$nm_raw" = "22" ]; then
+      ver="v2.2.0"
+    elif [ "$nm_raw" = "20" ]; then
+      ver="v2.0.0"
+    elif [ -n "$nm_raw" ]; then
+      ver="v${nm_raw}"
+    fi
+  fi
+  printf '%s' "$ver"
+}
+
+ROOT_DESC="$(root_version)"
+if [ "$ROOT_DESC" != "none" ]; then
+  if [ -d drivers/bakasu ]; then
+    ROOT_DESC="BakaSU ${ROOT_DESC}"
+  else
+    ROOT_DESC="xxKSU ${ROOT_DESC}"
+  fi
+  if grep -q '^CONFIG_NOMOUNT=y' "$OUT_DIR/.config" 2>/dev/null; then
+    ROOT_DESC="${ROOT_DESC} · NoMount $(nomount_version)"
+  fi
+fi
+log "root: $ROOT_DESC"
+
 # ---- step outputs ----------------------------------------------------------
 gh_output kernel_version "$KERNEL_VERSION"
 gh_output build_seconds "$BUILD_SECONDS"
 gh_output images "$(printf '%s\n' "${IMAGES[@]}")"
 gh_output primary_image "$PRIMARY"
 gh_output ccache_hit_rate "$HIT_RATE"
+gh_output root_desc "$ROOT_DESC"
 gh_output build_log "$KERNEL_PATH/$BUILD_LOG"
 
 if [ "$HIT_RATE" = "n/a" ]; then
