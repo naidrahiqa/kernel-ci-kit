@@ -17,7 +17,7 @@ on:
       kernel_ref:
         description: 'Kernel source branch/tag/SHA'
         required: true
-        default: 'PawwwNunungggg24.0'
+        default: 'EsTehAnget24.0'
       defconfig:
         description: 'Kernel defconfig target'
         required: true
@@ -37,7 +37,7 @@ on:
       zip_name_template:
         description: 'Zip name template'
         required: false
-        default: 'PawwwNunungggg-{toolchain}-{hash}-{date}-{version}'
+        default: 'EsTehAnget-{toolchain}-{hash}-{date}-{version}'
       config_overrides:
         description: 'Space-separated CONFIG=VALUE overrides after defconfig (e.g. "CONFIG_NOMOUT=n")'
         required: false
@@ -62,7 +62,7 @@ on:
         description: 'Kernel source branch/tag/SHA'
         type: string
         required: false
-        default: 'PawwwNunungggg24.0'
+        default: 'EsTehAnget24.0'
       defconfig:
         description: 'Kernel defconfig target'
         type: string
@@ -87,7 +87,7 @@ on:
         description: 'Zip name template'
         type: string
         required: false
-        default: 'PawwwNunungggg-{toolchain}-{hash}-{date}-{version}'
+        default: 'EsTehAnget-{toolchain}-{hash}-{date}-{version}'
       config_overrides:
         description: 'Space-separated CONFIG=VALUE overrides after defconfig (e.g. "CONFIG_NOMOUT=n")'
         type: string
@@ -119,7 +119,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: ${{ inputs.kernel_repo || 'naidrahiqa/android_kernel_xiaomi_mt6768-k419' }}
-          ref: ${{ inputs.kernel_ref || 'PawwwNunungggg24.0' }}
+          ref: ${{ inputs.kernel_ref || 'EsTehAnget24.0' }}
           path: kernel
           fetch-depth: 0
 
@@ -133,7 +133,7 @@ jobs:
           TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID || '-1003752197403' }}
           KCK_KERNEL_DIR: kernel
           KCK_SOURCE_REPO: ${{ inputs.kernel_repo || 'naidrahiqa/android_kernel_xiaomi_mt6768-k419' }}
-          KCK_SOURCE_BRANCH: ${{ inputs.kernel_ref || 'PawwwNunungggg24.0' }}
+          KCK_SOURCE_BRANCH: ${{ inputs.kernel_ref || 'EsTehAnget24.0' }}
           KCK_SOURCE_SHA: ${{ github.sha }}
 
       - name: Build with kernel-ci-kit
@@ -144,7 +144,7 @@ jobs:
           device_name: ${{ inputs.device_name || 'selene' }}
           toolchain: ${{ inputs.toolchain || 'greenforce-clang' }}
           extra_make_args: ${{ inputs.extra_make_args || 'LLVM=1 LLVM_IAS=1' }}
-          zip_name_template: ${{ inputs.zip_name_template || 'PawwwNunungggg-{toolchain}-{hash}-{date}-{version}' }}
+          zip_name_template: ${{ inputs.zip_name_template || 'EsTehAnget-{toolchain}-{hash}-{date}-{version}' }}
           config_overrides: ${{ inputs.config_overrides || '' }}
           kernel_path: kernel
 
@@ -159,7 +159,7 @@ jobs:
           TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID || '-1003752197403' }}
           KCK_KERNEL_DIR: kernel
           KCK_SOURCE_REPO: ${{ inputs.kernel_repo || 'naidrahiqa/android_kernel_xiaomi_mt6768-k419' }}
-          KCK_SOURCE_BRANCH: ${{ inputs.kernel_ref || 'PawwwNunungggg24.0' }}
+          KCK_SOURCE_BRANCH: ${{ inputs.kernel_ref || 'EsTehAnget24.0' }}
           KCK_SOURCE_SHA: ${{ github.sha }}
           KCK_TOOLCHAIN: ${{ inputs.toolchain || 'greenforce-clang' }}
           KCK_BUILD_SECONDS: ${{ steps.kck.outputs.build_seconds }}
@@ -175,7 +175,7 @@ jobs:
           TELEGRAM_ERROR_CHANNEL_ID: ${{ secrets.TELEGRAM_ERROR_CHANNEL_ID || '-1003945405514' }}
           KCK_KERNEL_DIR: kernel
           KCK_SOURCE_REPO: ${{ inputs.kernel_repo || 'naidrahiqa/android_kernel_xiaomi_mt6768-k419' }}
-          KCK_SOURCE_BRANCH: ${{ inputs.kernel_ref || 'PawwwNunungggg24.0' }}
+          KCK_SOURCE_BRANCH: ${{ inputs.kernel_ref || 'EsTehAnget24.0' }}
           KCK_SOURCE_SHA: ${{ github.sha }}
           KCK_TOOLCHAIN: ${{ inputs.toolchain || 'greenforce-clang' }}
 
@@ -190,4 +190,4 @@ jobs:
           body: |
             **Kernel:** ${{ steps.kck.outputs.kernel_version }}
             **Build:** ${{ steps.kck.outputs.build_seconds }}s · ccache ${{ steps.kck.outputs.ccache_hit_rate }}%
-            **Source:** ${{ inputs.kernel_repo || 'naidrahiqa/android_kernel_xiaomi_mt6768-k419' }} @ ${{ inputs.kernel_ref || 'PawwwNunungggg24.0' }}
+            **Source:** ${{ inputs.kernel_repo || 'naidrahiqa/android_kernel_xiaomi_mt6768-k419' }} @ ${{ inputs.kernel_ref || 'EsTehAnget24.0' }}

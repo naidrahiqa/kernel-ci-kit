@@ -189,7 +189,7 @@ fi
 
 RUN_NUM="${GITHUB_RUN_NUMBER:-1}"
 RUN_VER="r${RUN_NUM}"
-BRAND_NAME="${BRAND:-PawwwNunungggg}"
+BRAND_NAME="${BRAND:-EsTehAnget}"
 
 ZIP_NAME="$(printf '%s' "$ZIP_NAME_TEMPLATE" \
   | sed \

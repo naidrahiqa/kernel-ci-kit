@@ -27,7 +27,7 @@
 #
 # Context env (optional):
 #   KCK_KERNEL_DIR      kernel checkout dir (default ".")
-#   KCK_BRAND           brand prefix in messages (default "PawwwNunungggg")
+#   KCK_BRAND           brand prefix in messages (default "EsTehAnget")
 #   KCK_SOURCE_REPO / KCK_SOURCE_BRANCH / KCK_SOURCE_SHA
 #   KCK_VERSION / KCK_RELEASE_TAG / KCK_BUILD_SECONDS / KCK_KERNEL_VERSION
 #   KCK_TOOLCHAIN       toolchain display name (e.g. "aosp-clang")
@@ -60,7 +60,7 @@ CHANNEL="${TELEGRAM_CHANNEL_ID:-}"
 ERROR_CHANNEL="${TELEGRAM_ERROR_CHANNEL_ID:-}"
 
 KERNEL_DIR="${KCK_KERNEL_DIR:-.}"
-BRAND="${KCK_BRAND:-PawwwNunungggg}"
+BRAND="${KCK_BRAND:-EsTehAnget}"
 SERVER="${GITHUB_SERVER_URL:-https://github.com}"
 
 # ---- branding ---------------------------------------------------------------

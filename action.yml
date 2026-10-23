@@ -56,7 +56,7 @@ inputs:
     required: true
   zip_name_template:
     description: 'Zip name template. Placeholders: {device} {version} {toolchain} {date}.'
-    default: 'PawwwNunungggg-{toolchain}-{hash}-{date}-{version}'
+    default: 'EsTehAnget-{toolchain}-{hash}-{date}-{version}'
   config_overrides:
     description: 'Space-separated CONFIG=VALUE overrides applied after defconfig (e.g. "CONFIG_NOMOUNT=n CONFIG_KSU_MANUAL_HOOK=y").'
     default: ''
