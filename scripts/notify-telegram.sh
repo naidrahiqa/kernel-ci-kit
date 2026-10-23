@@ -127,23 +127,17 @@ REPO_URL="$SERVER/${KCK_SOURCE_REPO:-${GITHUB_REPOSITORY:-local/local}}"
 COMMIT_URL="$REPO_URL/commit/${SHA}"
 
 # Nightly artifacts live on GitHub Actions. Prefer the artifact's own page so
-# the link lands on the file rather than the run; either way GitHub gates the
-# download behind a login, which the note says out loud. Tag builds get the
+# the link lands on the file rather than the run. Tag builds get the
 # Releases page instead. If the artifact id cannot be resolved we stay on the
 # run page rather than emitting a link with a missing id in it.
 DOWNLOAD_URL="$BUILD_URL"
-DOWNLOAD_LABEL="⬇️ Open Actions run"
-DOWNLOAD_NOTE="<i>(butuh login GitHub)</i>"
 ARTIFACT_ID="$(resolve_artifact_id)"
 if [ -n "$ARTIFACT_ID" ]; then
   DOWNLOAD_URL="$SERVER/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts/${ARTIFACT_ID}"
-  DOWNLOAD_LABEL="⬇️ Download kernel zip"
 fi
 case "${GITHUB_REF:-}" in
   refs/tags/*)
     DOWNLOAD_URL="$SERVER/${GITHUB_REPOSITORY:-local/local}/releases/tag/${GITHUB_REF_NAME}"
-    DOWNLOAD_LABEL="⬇️ Download from Releases"
-    DOWNLOAD_NOTE=""
     ;;
 esac
 
@@ -238,10 +232,6 @@ cfg() {
   fi
 }
 
-bool() {
-  if [ "$1" = "y" ]; then printf 'true'; else printf 'false'; fi
-}
-
 # strip_kbuild_value <raw> — turn a Kbuild make expansion into a plain value.
 # Kbuild files carry things like KSU_TAG_NAME := $(shell git describe ...),
 # which is meaningless outside make, so drop the expansion and trim space.
@@ -307,7 +297,8 @@ build_features() {
     mode="xxKSU"
   fi
 
-  local root_desc="${mode} $(ksu_version)"
+  local root_desc
+  root_desc="${mode} $(ksu_version)"
   if [ "$(cfg CONFIG_NOMOUNT)" = "y" ]; then
     root_desc="${root_desc} · NoMount $(nomount_version)"
   fi
